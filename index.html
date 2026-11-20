@@ -233,42 +233,70 @@
 
       <!-- 頁籤 1：案件明細 -->
       <div id="viewDetail">
-        <div class="flex items-center justify-between gap-2 mb-1.5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
           <div id="lblDetailSummary" class="text-[11px] font-normal text-slate-400">載入資料中...</div>
-          <div class="text-[11px] font-normal text-slate-400 shrink-0">單位:千元</div>
+          <div class="flex items-center gap-3 text-[11px] font-normal text-slate-400 shrink-0">
+            <span class="hidden sm:inline">提示：拖曳標題右邊界可自由調整欄寬（雙擊自動適應）</span>
+            <button type="button" onclick="resetDetailColumnWidths()" class="text-slate-400 hover:text-slate-600 underline decoration-slate-300 underline-offset-2 transition">重設欄寬</button>
+            <span>單位:千元</span>
+          </div>
         </div>
         <div class="overflow-x-auto border border-slate-200 rounded">
-          <table class="table-fixed w-full text-left border-collapse text-xs">
-            <colgroup>
-              <col class="w-[46px]" />
-              <col class="w-[74px]" />
-              <col class="w-[46px]" />
-              <col class="w-[72px]" />
-              <col class="w-[82px]" />
-              <col class="w-auto" />
-              <col class="w-[88px]" />
-              <col class="w-[88px]" />
-              <col class="w-[152px]" />
-              <col class="w-[84px]" />
-              <col class="w-[132px]" />
-              <col class="w-[84px]" />
-              <col id="colActionWidth" class="w-0" />
+          <table id="tblDetail" class="table-fixed w-full text-left border-collapse text-xs">
+            <colgroup id="detailColGroup">
+              <col data-col-key="year" style="width: 48px;" />
+              <col data-col-key="category" style="width: 78px;" />
+              <col data-col-key="branch" style="width: 50px;" />
+              <col data-col-key="county" style="width: 76px;" />
+              <col data-col-key="water" style="width: 84px;" />
+              <col data-col-key="name" style="width: 310px;" />
+              <col data-col-key="approved" style="width: 90px;" />
+              <col data-col-key="usable" style="width: 90px;" />
+              <col data-col-key="code" style="width: 156px;" />
+              <col data-col-key="coords" style="width: 86px;" />
+              <col data-col-key="remark" style="width: 140px;" />
+              <col data-col-key="appendix" style="width: 86px;" />
+              <col id="colActionWidth" data-col-key="action" style="width: 0px;" />
             </colgroup>
-            <thead class="sticky top-0 z-20">
+            <thead class="sticky top-0 z-20 select-none">
               <tr>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('年度')">年度</th>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('類別')">類別</th>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('分署')">分署</th>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('縣市')">縣市</th>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle">水系</th>
-                <th class="px-2 py-2 whitespace-nowrap text-center align-middle">案件名稱</th>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('核定經費_千元')">核定經費</th>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('可支用經費_千元')">可支用經費</th>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle">工程編號</th>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle">座標點位</th>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle">備註資訊</th>
-                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle">附表</th>
-                <th id="thActionCol" class="px-1.5 py-2 whitespace-nowrap text-center align-middle hidden">操作</th>
+                <th data-col-key="year" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('年度')">
+                  年度<span class="col-resizer" data-col-key="year" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="category" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('類別')">
+                  類別<span class="col-resizer" data-col-key="category" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="branch" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('分署')">
+                  分署<span class="col-resizer" data-col-key="branch" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="county" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('縣市')">
+                  縣市<span class="col-resizer" data-col-key="county" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="water" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle">
+                  水系<span class="col-resizer" data-col-key="water" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="name" class="relative px-2 py-2 whitespace-nowrap text-center align-middle">
+                  案件名稱<span class="col-resizer" data-col-key="name" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="approved" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('核定經費_千元')">
+                  核定經費<span class="col-resizer" data-col-key="approved" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="usable" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('可支用經費_千元')">
+                  可支用經費<span class="col-resizer" data-col-key="usable" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="code" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle">
+                  工程編號<span class="col-resizer" data-col-key="code" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="coords" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle">
+                  座標點位<span class="col-resizer" data-col-key="coords" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="remark" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle">
+                  備註資訊<span class="col-resizer" data-col-key="remark" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="appendix" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle">
+                  附表<span class="col-resizer" data-col-key="appendix" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th id="thActionCol" data-col-key="action" class="px-1.5 py-2 whitespace-nowrap text-center align-middle hidden">操作</th>
               </tr>
             </thead>
             <tbody id="tbodyDetail" class="divide-y divide-slate-200"></tbody>
