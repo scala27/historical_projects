@@ -9,7 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col bg-slate-50">
 
   <!-- 頂部標題與極簡線條功能圖示列 -->
   <header class="bg-[#1a365d] text-white px-5 py-2.5 shadow-sm flex items-center justify-between gap-3">
@@ -237,38 +237,38 @@
           <div id="lblDetailSummary" class="text-[11px] font-normal text-slate-400">載入資料中...</div>
           <div class="text-[11px] font-normal text-slate-400 shrink-0">單位:千元</div>
         </div>
-        <div class="table-container border border-slate-200 rounded">
+        <div class="overflow-x-auto border border-slate-200 rounded">
           <table class="table-fixed w-full text-left border-collapse text-xs">
             <colgroup>
-              <col style="width: 46px;" />
-              <col style="width: 72px;" />
-              <col style="width: 48px;" />
-              <col style="width: 60px;" />
-              <col style="width: 60px;" />
-              <col style="width: 264px;" />
-              <col style="width: 96px;" />
-              <col style="width: 96px;" />
-              <col style="width: 196px;" />
-              <col style="width: 110px;" />
-              <col style="width: 165px;" />
-              <col style="width: 92px;" />
-              <col id="colActionWidth" style="width: 0px;" />
+              <col class="w-[46px]" />
+              <col class="w-[74px]" />
+              <col class="w-[46px]" />
+              <col class="w-[72px]" />
+              <col class="w-[82px]" />
+              <col class="w-auto" />
+              <col class="w-[88px]" />
+              <col class="w-[88px]" />
+              <col class="w-[152px]" />
+              <col class="w-[84px]" />
+              <col class="w-[132px]" />
+              <col class="w-[84px]" />
+              <col id="colActionWidth" class="w-0" />
             </colgroup>
-            <thead>
+            <thead class="sticky top-0 z-20">
               <tr>
-                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('年度')">年度</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('類別')">類別</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('分署')">分署</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('縣市')">縣市</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle">水系</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle">案件名稱</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('核定經費_千元')">核定經費</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('可支用經費_千元')">可支用經費</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle">工程編號</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle">座標點位</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle">備註資訊</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle">附表</th>
-                <th id="thActionCol" class="p-2 whitespace-nowrap text-center align-middle hidden">操作</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('年度')">年度</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('類別')">類別</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('分署')">分署</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('縣市')">縣市</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle">水系</th>
+                <th class="px-2 py-2 whitespace-nowrap text-center align-middle">案件名稱</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('核定經費_千元')">核定經費</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('可支用經費_千元')">可支用經費</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle">工程編號</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle">座標點位</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle">備註資訊</th>
+                <th class="px-1.5 py-2 whitespace-nowrap text-center align-middle">附表</th>
+                <th id="thActionCol" class="px-1.5 py-2 whitespace-nowrap text-center align-middle hidden">操作</th>
               </tr>
             </thead>
             <tbody id="tbodyDetail" class="divide-y divide-slate-200"></tbody>
@@ -284,7 +284,7 @@
               <span class="text-xs font-bold text-[#1a365d]">各縣市經費分配表（點擊列檢視右側趨勢）</span>
               <button onclick="resetCountyChartToTotal()" class="text-xs bg-[#2b6cb0] hover:bg-[#1a365d] text-white px-2.5 py-1 rounded font-bold transition">顯示全臺合計</button>
             </div>
-            <div class="max-h-[500px] overflow-y-auto border border-slate-200 rounded">
+            <div class="border border-slate-200 rounded">
               <table class="w-full text-xs border-collapse">
                 <thead>
                   <tr>
