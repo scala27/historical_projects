@@ -154,9 +154,9 @@
       </div>
     </section>
 
-    <!-- 主內容頁籤與對稱 2 列查詢條件整合容器 -->
+    <!-- 主內容頁籤與網格對齊 2 列查詢條件整合容器 -->
     <section class="bg-white rounded-lg shadow-sm border border-slate-200 p-3">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-2.5 mb-3">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-2.5 mb-2">
         <!-- 左側：4 個精簡頁籤 -->
         <div class="flex items-center gap-1.5 shrink-0">
           <button id="tabBtnDetail" onclick="switchTab('detail')" class="px-3.5 py-1.5 rounded text-sm font-bold bg-[#1f538d] text-white transition">案件明細</button>
@@ -165,91 +165,95 @@
           <button id="tabBtnBranch" onclick="switchTab('branch')" class="px-3.5 py-1.5 rounded text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">分署經費</button>
         </div>
 
-        <!-- 右側：6 個篩選項目分 2 列左右對稱排列 -->
-        <div class="flex flex-col gap-1.5 text-xs">
-          <!-- 第 1 列：年度、篩選、分署別／縣市別、查詢鍵 -->
-          <div class="flex flex-wrap items-center justify-end gap-3">
-            <div class="flex items-center gap-1">
-              <label class="font-bold text-slate-700 shrink-0">年度：</label>
-              <select id="selYearStart" onchange="onYearChange()" class="border border-slate-300 rounded px-1.5 py-1 bg-white"></select>
-              <span class="text-slate-600">至</span>
-              <select id="selYearEnd" onchange="onYearChange()" class="border border-slate-300 rounded px-1.5 py-1 bg-white"></select>
-              <span class="text-slate-600">年</span>
+        <!-- 右側：Grid 雙列上下左右對齊查詢面板 -->
+        <div class="grid grid-cols-1 md:grid-cols-[auto_auto_auto_auto] gap-x-3 gap-y-1.5 items-center text-xs">
+          <!-- 第 1 列 第 1 欄：年度 -->
+          <div class="flex items-center gap-1">
+            <label class="font-bold text-slate-700 w-12 text-right shrink-0">年度：</label>
+            <div class="flex items-center gap-1 w-[156px]">
+              <select id="selYearStart" onchange="onYearChange()" class="border border-slate-300 rounded px-1.5 py-1 bg-white flex-1 min-w-0"></select>
+              <span class="text-slate-600 shrink-0">至</span>
+              <select id="selYearEnd" onchange="onYearChange()" class="border border-slate-300 rounded px-1.5 py-1 bg-white flex-1 min-w-0"></select>
+              <span class="text-slate-600 shrink-0">年</span>
             </div>
+          </div>
 
-            <div class="flex items-center gap-1">
-              <label class="font-bold text-slate-700 shrink-0">篩選：</label>
-              <select id="selDimension" onchange="onDimensionChange()" class="border border-slate-300 rounded px-1.5 py-1 bg-white">
-                <option value="branch">按分署統計</option>
-                <option value="county">按縣市統計</option>
-              </select>
-            </div>
+          <!-- 第 1 列 第 2 欄：篩選 -->
+          <div class="flex items-center gap-1">
+            <label class="font-bold text-slate-700 w-10 text-right shrink-0">篩選：</label>
+            <select id="selDimension" onchange="onDimensionChange()" class="border border-slate-300 rounded px-2 py-1 bg-white w-[132px]">
+              <option value="branch">按分署統計</option>
+              <option value="county">按縣市統計</option>
+            </select>
+          </div>
 
-            <div class="flex items-center gap-1">
-              <label id="lblTarget" class="font-bold text-slate-700 shrink-0">分署別：</label>
-              <select id="selTarget" onchange="applyFilters()" class="border border-slate-300 rounded px-1.5 py-1 bg-white min-w-[116px]"></select>
-            </div>
+          <!-- 第 1 列 第 3 欄：分署別／縣市別 -->
+          <div class="flex items-center gap-1">
+            <label id="lblTarget" class="font-bold text-slate-700 w-12 text-right shrink-0">分署別：</label>
+            <select id="selTarget" onchange="applyFilters()" class="border border-slate-300 rounded px-2 py-1 bg-white w-[176px]"></select>
+          </div>
 
+          <!-- 第 1 列 第 4 欄：查詢按鈕 -->
+          <div class="flex justify-end">
             <button onclick="applyFilters()" class="bg-[#1f538d] hover:bg-[#14375e] text-white font-bold px-3.5 py-1 rounded transition shrink-0">查詢</button>
           </div>
 
-          <!-- 第 2 列：縣市別／分署別、類別、關鍵字 -->
-          <div class="flex flex-wrap items-center justify-end gap-3">
-            <div class="flex items-center gap-1">
-              <label id="lblSubFilter" class="font-bold text-slate-700 shrink-0">縣市別：</label>
-              <select id="selSubFilter" onchange="applyFilters()" class="border border-slate-300 rounded px-1.5 py-1 bg-white min-w-[116px]"></select>
-            </div>
+          <!-- 第 2 列 第 1 欄：縣市別／分署別 -->
+          <div class="flex items-center gap-1">
+            <label id="lblSubFilter" class="font-bold text-slate-700 w-12 text-right shrink-0">縣市別：</label>
+            <select id="selSubFilter" onchange="applyFilters()" class="border border-slate-300 rounded px-2 py-1 bg-white w-[156px]"></select>
+          </div>
 
-            <!-- 類別複選下拉式視窗 -->
-            <div class="flex items-center gap-1 relative" id="categoryDropdownWrapper">
-              <label class="font-bold text-slate-700 shrink-0">類別：</label>
-              <button type="button" onclick="toggleCategoryDropdown(event)" class="border border-slate-300 rounded px-2 py-1 bg-white hover:bg-slate-50 flex items-center justify-between gap-1.5 min-w-[132px]">
-                <span id="lblCategorySummary" class="truncate text-slate-800">全部類別 (8)</span>
-                <svg class="w-3 h-3 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </button>
+          <!-- 第 2 列 第 2 欄：類別複選 -->
+          <div class="flex items-center gap-1 relative" id="categoryDropdownWrapper">
+            <label class="font-bold text-slate-700 w-10 text-right shrink-0">類別：</label>
+            <button type="button" onclick="toggleCategoryDropdown(event)" class="border border-slate-300 rounded px-2 py-1 bg-white hover:bg-slate-50 flex items-center justify-between gap-1.5 w-[132px]">
+              <span id="lblCategorySummary" class="truncate text-slate-800">全部類別 (8)</span>
+              <svg class="w-3 h-3 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
 
-              <div id="categoryDropdownPanel" class="hidden absolute right-0 top-full mt-1 w-52 bg-white border border-slate-300 rounded-md shadow-lg p-2 z-40 text-xs space-y-1">
-                <label class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-slate-100 font-bold text-slate-800 cursor-pointer border-b border-slate-100 pb-1.5">
-                  <input type="checkbox" id="chkAll" checked onchange="toggleAllCategories(this.checked)" class="rounded text-blue-700" />
-                  <span>全選</span>
-                </label>
-                <div id="categoryCheckboxes" class="max-h-60 overflow-y-auto space-y-0.5 pt-0.5"></div>
-              </div>
+            <div id="categoryDropdownPanel" class="hidden absolute right-0 top-full mt-1 w-52 bg-white border border-slate-300 rounded-md shadow-lg p-2 z-40 text-xs space-y-1">
+              <label class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-slate-100 font-bold text-slate-800 cursor-pointer border-b border-slate-100 pb-1.5">
+                <input type="checkbox" id="chkAll" checked onchange="toggleAllCategories(this.checked)" class="rounded text-blue-700" />
+                <span>全選</span>
+              </label>
+              <div id="categoryCheckboxes" class="max-h-60 overflow-y-auto space-y-0.5 pt-0.5"></div>
             </div>
+          </div>
 
-            <div class="flex items-center gap-1">
-              <label class="font-bold text-slate-700 shrink-0">關鍵字：</label>
-              <input id="txtKeyword" type="text" onkeyup="if(event.key==='Enter') applyFilters()" placeholder="搜尋名稱 / 水系 / 編號" class="border border-slate-300 rounded px-2 py-1 w-44 sm:w-52" />
-            </div>
+          <!-- 第 2 列 第 3~4 欄：關鍵字（右側邊界與上方查詢按鈕齊平） -->
+          <div class="flex items-center gap-1 md:col-span-2">
+            <label class="font-bold text-slate-700 w-12 text-right shrink-0">關鍵字：</label>
+            <input id="txtKeyword" type="text" onkeyup="if(event.key==='Enter') applyFilters()" placeholder="搜尋名稱 / 水系 / 編號" class="border border-slate-300 rounded px-2 py-1 flex-1 min-w-[176px]" />
           </div>
         </div>
       </div>
 
       <!-- 頁籤 1：案件明細 -->
       <div id="viewDetail">
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <div id="lblDetailSummary" class="text-xs font-bold text-slate-700">載入資料中...</div>
-          <div class="text-xs font-bold text-slate-600 shrink-0">單位:千元</div>
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+          <div id="lblDetailSummary" class="text-[11px] font-normal text-slate-400">載入資料中...</div>
+          <div class="text-[11px] font-normal text-slate-400 shrink-0">單位:千元</div>
         </div>
         <div class="table-container border border-slate-200 rounded">
           <table class="w-full text-left border-collapse text-xs">
             <thead>
               <tr>
-                <th class="p-2 cursor-pointer" onclick="sortDetailTable('年度')">年度</th>
-                <th class="p-2 cursor-pointer" onclick="sortDetailTable('類別')">類別</th>
-                <th class="p-2 cursor-pointer" onclick="sortDetailTable('分署')">分署</th>
-                <th class="p-2 cursor-pointer" onclick="sortDetailTable('縣市')">縣市</th>
-                <th class="p-2">水系</th>
-                <th class="p-2 min-w-[260px]">案件名稱</th>
-                <th class="p-2 text-right cursor-pointer" onclick="sortDetailTable('核定經費_千元')">核定經費</th>
-                <th class="p-2 text-right cursor-pointer" onclick="sortDetailTable('可支用經費_千元')">可支用經費</th>
-                <th class="p-2">工程編號</th>
-                <th class="p-2">座標點位</th>
-                <th class="p-2">備註資訊</th>
-                <th class="p-2">附表</th>
-                <th id="thActionCol" class="p-2 text-center hidden">操作</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('年度')">年度</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('類別')">類別</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('分署')">分署</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('縣市')">縣市</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle">水系</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle min-w-[270px]">案件名稱</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('核定經費_千元')">核定經費</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('可支用經費_千元')">可支用經費</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle">工程編號</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle w-[110px]">座標點位</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle w-[165px]">備註資訊</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle">附表</th>
+                <th id="thActionCol" class="p-2 whitespace-nowrap text-center align-middle hidden">操作</th>
               </tr>
             </thead>
             <tbody id="tbodyDetail" class="divide-y divide-slate-200"></tbody>
