@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>歷年水利先期檢討工程數據查詢與分析系統 (雲端版)</title>
+  <title>防洪工程案件統計資料</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -15,7 +15,7 @@
       overflow-x: hidden;
     }
     .table-container {
-      max-height: 540px;
+      max-height: 560px;
       overflow-y: auto;
       overflow-x: auto;
     }
@@ -30,30 +30,125 @@
     thead th:hover {
       background-color: #14375e;
     }
+    /* 極簡純線條圖示懸浮提示語 */
+    .icon-tip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-tip .tip-text {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-size: 12px;
+      line-height: 1.4;
+      padding: 4px 9px;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+      z-index: 50;
+    }
+    .icon-tip:hover .tip-text {
+      visibility: visible;
+      opacity: 1;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
-  <!-- 頂部標題與權限狀態列 -->
-  <header class="bg-[#1a365d] text-white px-5 py-3 shadow-sm flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <h1 class="text-lg font-bold tracking-wide">歷年水利先期檢討工程數據查詢與智慧分析系統</h1>
-      <p class="text-xs text-slate-300 mt-0.5">雲端即時資料庫 (Google Sheets API) ｜ 跨年度防重複統計與簡報出圖版</p>
-    </div>
-    <div class="flex items-center gap-2">
-      <span id="syncStatusBadge" class="text-xs bg-slate-700 px-2.5 py-1 rounded text-slate-200">連線準備中...</span>
-      <button onclick="loadAllData(true)" class="text-xs bg-slate-600 hover:bg-slate-500 px-3 py-1.5 rounded font-medium transition">重新同步資料</button>
-      <button id="btnAdminLogin" onclick="openAdminModal()" class="text-xs bg-amber-600 hover:bg-amber-500 px-3 py-1.5 rounded font-bold transition">管理者登入</button>
-      <button id="btnAdminLogout" onclick="logoutAdmin()" class="hidden text-xs bg-emerald-700 hover:bg-emerald-600 px-3 py-1.5 rounded font-bold transition">管理者已驗證 (登出)</button>
+  <!-- 頂部標題與極簡線條功能圖示列 -->
+  <header class="bg-[#1a365d] text-white px-5 py-2.5 shadow-sm flex items-center justify-between gap-3">
+    <h1 class="text-lg font-bold tracking-wide">防洪工程案件統計資料</h1>
+
+    <div class="flex items-center gap-3">
+      <!-- 1. 雲端同步狀態純線條圖示 -->
+      <div id="syncStatusWrapper" class="icon-tip text-slate-200 cursor-default p-1.5">
+        <svg id="iconSyncCloud" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+          <path id="iconSyncCheck" d="m9 13 2 2 4-4"/>
+        </svg>
+        <span id="syncStatusTooltip" class="tip-text">連線準備中...</span>
+      </div>
+
+      <!-- 2. 重新同步資料純線條圖示 -->
+      <button onclick="loadAllData(true)" class="icon-tip text-slate-200 hover:text-white p-1.5 transition focus:outline-none" aria-label="重新同步資料">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+          <path d="M16 16h5v5"/>
+        </svg>
+        <span class="tip-text">重新同步資料</span>
+      </button>
+
+      <!-- 3. 整合選單純線條圖示（管理者驗證 / 匯入 Excel / 匯出 Excel） -->
+      <div class="relative" id="topMenuContainer">
+        <button id="btnTopMenu" onclick="toggleTopMenu(event)" class="icon-tip text-slate-200 hover:text-white p-1.5 transition focus:outline-none" aria-label="系統功能選單">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="4" y1="12" x2="20" y2="12"/>
+            <line x1="4" y1="18" x2="20" y2="18"/>
+          </svg>
+          <span id="adminIndicatorDot" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span class="tip-text">系統管理與 Excel 功能</span>
+        </button>
+
+        <!-- 下拉功能選單 -->
+        <div id="topMenuDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white text-slate-800 rounded-md shadow-lg border border-slate-200 py-1 z-50 text-xs">
+          <button id="menuAdminLogin" onclick="closeTopMenu(); openAdminModal();" class="w-full text-left px-3.5 py-2 hover:bg-slate-100 flex items-center gap-2 font-medium text-slate-700">
+            <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span>管理者登入</span>
+          </button>
+
+          <button id="menuAdminLogout" onclick="closeTopMenu(); logoutAdmin();" class="hidden w-full text-left px-3.5 py-2 hover:bg-slate-100 flex items-center gap-2 font-bold text-emerald-700">
+            <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span>管理已驗證 (登出)</span>
+          </button>
+
+          <div class="border-t border-slate-100 my-1"></div>
+
+          <button id="menuImportExcel" onclick="closeTopMenu(); triggerExcelInput();" class="hidden w-full text-left px-3.5 py-2 hover:bg-slate-100 flex items-center gap-2 font-medium text-orange-700">
+            <svg class="w-4 h-4 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <span>匯入 Excel</span>
+          </button>
+
+          <button onclick="closeTopMenu(); exportCurrentExcel();" class="w-full text-left px-3.5 py-2 hover:bg-slate-100 flex items-center gap-2 font-medium text-slate-700">
+            <svg class="w-4 h-4 text-emerald-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>匯出 Excel</span>
+          </button>
+        </div>
+      </div>
+      <input type="file" id="fileExcelInput" accept=".xlsx,.xls,.xlsm" class="hidden" onchange="handleExcelFileSelect(event)" />
     </div>
   </header>
 
   <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 py-3 space-y-3">
 
-    <!-- 查詢條件控制列 -->
+    <!-- 單列整合查詢條件控制列 -->
     <section class="bg-white rounded-lg shadow-sm border border-slate-200 p-3 flex flex-wrap items-center gap-3">
       <div class="flex items-center gap-1.5">
-        <label class="text-sm font-bold text-slate-700">年度區間：</label>
+        <label class="text-sm font-bold text-slate-700">年度：</label>
         <select id="selYearStart" onchange="onYearChange()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
         <span class="text-sm text-slate-600">至</span>
         <select id="selYearEnd" onchange="onYearChange()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
@@ -61,7 +156,7 @@
       </div>
 
       <div class="flex items-center gap-1.5">
-        <label class="text-sm font-bold text-slate-700">統計維度：</label>
+        <label class="text-sm font-bold text-slate-700">篩選：</label>
         <select id="selDimension" onchange="onDimensionChange()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white">
           <option value="branch">按分署統計</option>
           <option value="county">按縣市統計</option>
@@ -74,31 +169,34 @@
       </div>
 
       <div class="flex items-center gap-1.5">
-        <label id="lblSubFilter" class="text-sm font-bold text-slate-700">縣市篩選：</label>
+        <label id="lblSubFilter" class="text-sm font-bold text-slate-700">縣市別：</label>
         <select id="selSubFilter" onchange="applyFilters()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
       </div>
 
-      <div class="flex items-center gap-1.5 flex-1 min-w-[200px]">
+      <!-- 類別複選下拉式視窗 -->
+      <div class="flex items-center gap-1.5 relative" id="categoryDropdownWrapper">
+        <label class="text-sm font-bold text-slate-700">類別：</label>
+        <button type="button" onclick="toggleCategoryDropdown(event)" class="border border-slate-300 rounded px-2.5 py-1 text-sm bg-white hover:bg-slate-50 flex items-center justify-between gap-2 min-w-[148px]">
+          <span id="lblCategorySummary" class="truncate text-slate-800">全部類別 (8)</span>
+          <svg class="w-3.5 h-3.5 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+
+        <div id="categoryDropdownPanel" class="hidden absolute left-0 top-full mt-1 w-56 bg-white border border-slate-300 rounded-md shadow-lg p-2 z-40 text-sm space-y-1">
+          <label class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-slate-100 font-bold text-slate-800 cursor-pointer border-b border-slate-100 pb-1.5">
+            <input type="checkbox" id="chkAll" checked onchange="toggleAllCategories(this.checked)" class="rounded text-blue-700" />
+            <span>全選</span>
+          </label>
+          <div id="categoryCheckboxes" class="max-h-60 overflow-y-auto space-y-0.5 pt-0.5"></div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 flex-1 min-w-[210px]">
         <label class="text-sm font-bold text-slate-700">關鍵字：</label>
         <input id="txtKeyword" type="text" onkeyup="if(event.key==='Enter') applyFilters()" placeholder="搜尋案件名稱 / 水系 / 工程編號" class="border border-slate-300 rounded px-2.5 py-1 text-sm w-full max-w-[240px]" />
-        <button onclick="applyFilters()" class="bg-[#1f538d] hover:bg-[#14375e] text-white text-sm font-bold px-3.5 py-1 rounded transition">查詢</button>
+        <button onclick="applyFilters()" class="bg-[#1f538d] hover:bg-[#14375e] text-white text-sm font-bold px-3.5 py-1 rounded transition shrink-0">查詢</button>
       </div>
-
-      <div class="flex items-center gap-2 ml-auto">
-        <button id="btnImportExcel" onclick="triggerExcelInput()" class="hidden bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold px-3 py-1 rounded transition">匯入 Excel</button>
-        <input type="file" id="fileExcelInput" accept=".xlsx,.xls,.xlsm" class="hidden" onchange="handleExcelFileSelect(event)" />
-        <button onclick="exportCurrentExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold px-3 py-1 rounded transition">匯出 Excel</button>
-      </div>
-    </section>
-
-    <!-- 類別多選核取方塊 -->
-    <section class="bg-white rounded-lg shadow-sm border border-slate-200 px-3 py-2 flex flex-wrap items-center gap-4 text-sm">
-      <span class="font-bold text-slate-700">篩選條件：</span>
-      <label class="inline-flex items-center gap-1.5 font-bold cursor-pointer">
-        <input type="checkbox" id="chkAll" checked onchange="toggleAllCategories(this.checked)" class="rounded text-blue-700" />
-        <span>全選</span>
-      </label>
-      <div id="categoryCheckboxes" class="flex flex-wrap items-center gap-4"></div>
     </section>
 
     <!-- 5 張 KPI 統計卡片 -->
@@ -174,7 +272,6 @@
       <!-- 頁籤 2：各縣市經費分配比較表 -->
       <div id="viewCounty" class="hidden">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <!-- 左側精簡 4 欄表 -->
           <div class="lg:col-span-4 border border-slate-200 rounded-lg p-2.5 bg-white">
             <div class="flex items-center justify-between mb-2">
               <span class="text-xs font-bold text-[#1a365d]">各縣市經費分配表（點擊列檢視右側趨勢）</span>
@@ -195,7 +292,6 @@
             </div>
           </div>
 
-          <!-- 右側縣市趨勢圖 -->
           <div class="lg:col-span-8 border border-slate-200 rounded-lg p-3 bg-slate-50 flex flex-col">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
               <span class="text-xs text-slate-600">點選左側縣市即時切換趨勢；點擊「顯示全臺合計」可恢復全臺統計</span>
@@ -334,7 +430,6 @@
   </div>
 
   <script>
-    // ★ 請將此網址替換為您部署 Google Apps Script 後取得的「網頁應用程式網址 (Web App URL)」
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxeO31XWJJasogIv_D1KBJddAfhGmLCY8ZRP2vkiJ9EwsJaAsy9iF0IlMO8RLRAAhn53A/exec";
 
     const CHINESE_NUM_ORDER = {
@@ -358,7 +453,7 @@
     ];
 
     const CATEGORIES_LIST = [
-      "工程", "委託設計/監造", "用地先期作業", "用地取得", "橋梁改建/補助", "逕流分擔/補助"
+      "工程", "委託設計/監造", "用地先期作業", "用地取得", "橋梁改建/補助", "逕流分擔/補助", "維修改善工程", "補助案件"
     ];
 
     let allRecords = [];
@@ -385,33 +480,89 @@
         chartBranch && chartBranch.resize();
       });
 
+      // 點擊外部自動收合下拉選單
+      document.addEventListener("click", (e) => {
+        const menuWrap = document.getElementById("topMenuContainer");
+        if (menuWrap && !menuWrap.contains(e.target)) {
+          closeTopMenu();
+        }
+        const catWrap = document.getElementById("categoryDropdownWrapper");
+        if (catWrap && !catWrap.contains(e.target)) {
+          document.getElementById("categoryDropdownPanel").classList.add("hidden");
+        }
+      });
+
       loadAllData(false);
     });
+
+    function toggleTopMenu(e) {
+      e.stopPropagation();
+      document.getElementById("topMenuDropdown").classList.toggle("hidden");
+    }
+
+    function closeTopMenu() {
+      document.getElementById("topMenuDropdown").classList.add("hidden");
+    }
+
+    function toggleCategoryDropdown(e) {
+      e.stopPropagation();
+      document.getElementById("categoryDropdownPanel").classList.toggle("hidden");
+    }
+
+    function normalizeCategoryName(rawCat) {
+      const c = String(rawCat || "").normalize("NFKC").trim();
+      if (c === "用地先期" || c === "用地先期作業") return "用地先期作業";
+      if (c === "橋梁改建" || c === "橋梁改建/補助") return "橋梁改建/補助";
+      if (c === "逕流分擔" || c === "逕流分擔/補助" || c === "逕流分擔設施建置") return "逕流分擔/補助";
+      return c || "工程";
+    }
 
     function initCategoryCheckboxes() {
       const container = document.getElementById("categoryCheckboxes");
       container.innerHTML = CATEGORIES_LIST.map(cat => `
-        <label class="inline-flex items-center gap-1 cursor-pointer">
+        <label class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-slate-100 cursor-pointer text-slate-700">
           <input type="checkbox" class="cat-chk rounded text-blue-700" value="${cat}" checked onchange="onSingleCategoryChange()" />
           <span>${cat}</span>
         </label>
       `).join("");
+      updateCategoryDropdownLabel();
+    }
+
+    function updateCategoryDropdownLabel() {
+      const chks = Array.from(document.querySelectorAll(".cat-chk"));
+      const checked = chks.filter(c => c.checked);
+      const lbl = document.getElementById("lblCategorySummary");
+      if (checked.length === chks.length) {
+        lbl.textContent = `全部類別 (${chks.length})`;
+      } else if (checked.length === 0) {
+        lbl.textContent = "未選取類別 (0)";
+      } else if (checked.length === 1) {
+        lbl.textContent = checked[0].value;
+      } else {
+        lbl.textContent = `已選 ${checked.length} 項類別`;
+      }
     }
 
     function toggleAllCategories(checked) {
       document.querySelectorAll(".cat-chk").forEach(el => el.checked = checked);
+      updateCategoryDropdownLabel();
       applyFilters();
     }
 
     function onSingleCategoryChange() {
       const chks = Array.from(document.querySelectorAll(".cat-chk"));
       document.getElementById("chkAll").checked = chks.every(c => c.checked);
+      updateCategoryDropdownLabel();
       applyFilters();
     }
 
     async function loadAllData(forceNotify) {
-      const badge = document.getElementById("syncStatusBadge");
-      badge.textContent = "雲端同步中...";
+      const tip = document.getElementById("syncStatusTooltip");
+      const icon = document.getElementById("iconSyncCloud");
+      tip.textContent = "雲端同步中...";
+      icon.classList.add("animate-pulse", "text-amber-300");
+      icon.classList.remove("text-emerald-300", "text-rose-400");
+
       try {
         const res = await fetch(GAS_API_URL);
         const json = await res.json();
@@ -419,18 +570,30 @@
 
         allRecords = (json.data || []).map(r => ({
           ...r,
-          "縣市": String(r["縣市"] || "").replace(/台/g, "臺"),
-          "分署": String(r["分署"] || "").replace("水規所", "水規分署"),
+          "年度": String(r["年度"] || "").normalize("NFKC").trim(),
+          "類別": normalizeCategoryName(r["類別"]),
+          "附表": String(r["附表"] || "").normalize("NFKC").trim(),
+          "分署": String(r["分署"] || "").normalize("NFKC").trim().replace("水規所", "水規分署"),
+          "縣市": String(r["縣市"] || "").normalize("NFKC").trim().replace(/台/g, "臺"),
+          "水系": String(r["水系"] || "").normalize("NFKC").trim(),
+          "案件名稱": String(r["案件名稱"] || "").normalize("NFKC").trim(),
+          "工程編號": String(r["工程編號"] || "").normalize("NFKC").trim(),
+          "座標點位": String(r["座標點位"] || "").normalize("NFKC").trim(),
+          "備註資訊": String(r["備註資訊"] || "").normalize("NFKC").trim(),
           "核定經費_千元": parseFloat(r["核定經費_千元"]) || 0,
           "可支用經費_千元": parseFloat(r["可支用經費_千元"]) || 0
         }));
 
         populateDropdownOptions();
         applyFilters();
-        badge.textContent = `已同步 (${allRecords.length} 筆)`;
+        icon.classList.remove("animate-pulse", "text-amber-300");
+        icon.classList.add("text-emerald-300");
+        tip.textContent = `已同步 (${allRecords.length} 筆)`;
         if (forceNotify) alert(`雲端資料同步完成，共載入 ${allRecords.length} 筆紀錄！`);
       } catch (err) {
-        badge.textContent = "連線失敗 (請確認 GAS_API_URL)";
+        icon.classList.remove("animate-pulse", "text-amber-300");
+        icon.classList.add("text-rose-400");
+        tip.textContent = "連線失敗 (請確認 GAS_API_URL)";
         console.error(err);
       }
     }
@@ -468,12 +631,12 @@
 
       if (dim === "branch") {
         document.getElementById("lblTarget").textContent = "分署別：";
-        document.getElementById("lblSubFilter").textContent = "縣市篩選：";
+        document.getElementById("lblSubFilter").textContent = "縣市別：";
         selTarget.innerHTML = ["【全部分署】", ...branches].map(v => `<option value="${v}">${v}</option>`).join("");
         selSub.innerHTML = ["【全部縣市】", ...STD_22_COUNTIES].map(v => `<option value="${v}">${v}</option>`).join("");
       } else {
         document.getElementById("lblTarget").textContent = "縣市別：";
-        document.getElementById("lblSubFilter").textContent = "分署篩選：";
+        document.getElementById("lblSubFilter").textContent = "分署別：";
         selTarget.innerHTML = ["【全部縣市】", ...STD_22_COUNTIES].map(v => `<option value="${v}">${v}</option>`).join("");
         selSub.innerHTML = ["【全部分署】", ...branches].map(v => `<option value="${v}">${v}</option>`).join("");
       }
@@ -481,7 +644,7 @@
     }
 
     function getMajorCategory(cat) {
-      if (["工程", "委託設計/監造"].includes(cat)) return "工程類";
+      if (["工程", "委託設計/監造", "維修改善工程"].includes(cat)) return "工程類";
       if (["用地先期作業", "用地取得"].includes(cat)) return "用地類";
       return "補助類";
     }
@@ -499,7 +662,7 @@
       const dim = document.getElementById("selDimension").value;
       const target = document.getElementById("selTarget").value;
       const sub = document.getElementById("selSubFilter").value;
-      const kw = document.getElementById("txtKeyword").value.trim().toLowerCase();
+      const kw = document.getElementById("txtKeyword").value.normalize("NFKC").trim().toLowerCase();
       const selectedCats = Array.from(document.querySelectorAll(".cat-chk:checked")).map(c => c.value);
 
       filteredRecords = allRecords.filter(r => {
@@ -522,7 +685,6 @@
         return true;
       });
 
-      // 跨年度去重與排除核定經費 0 元（與桌面版完全一致的 KPI 邏輯）
       const valid = filteredRecords.filter(r => r["核定經費_千元"] > 0);
       if (sY !== eY) {
         const sorted = [...valid].sort((a, b) => {
@@ -555,7 +717,7 @@
       document.getElementById("kpiTotalAmt").textContent = `核定經費: ${sumAmt(deduplicatedRecords).toFixed(2)} 億元`;
 
       const eng = deduplicatedRecords.filter(r => getMajorCategory(r["類別"]) === "工程類");
-      const engG = eng.filter(r => r["類別"] === "工程");
+      const engG = eng.filter(r => r["類別"] === "工程" || r["類別"] === "維修改善工程");
       const engD = eng.filter(r => r["類別"] === "委託設計/監造");
       document.getElementById("kpiEngCnt").textContent = `案件數: ${eng.length.toLocaleString()} 筆`;
       document.getElementById("kpiEngAmt").textContent = `核定經費: ${sumAmt(eng).toFixed(2)} 億元`;
@@ -566,16 +728,15 @@
       const landA = land.filter(r => r["類別"] === "用地取得");
       document.getElementById("kpiLandCnt").textContent = `案件數: ${land.length.toLocaleString()} 筆`;
       document.getElementById("kpiLandAmt").textContent = `核定經費: ${sumAmt(land).toFixed(2)} 億元`;
-      document.getElementById("kpiLandSub").innerHTML = `├─ 用地先期: ${landP.length} 筆 / ${sumAmt(landP).toFixed(2)} 億元<br>└─ 用地取得: ${landA.length} 筆 / ${sumAmt(landA).toFixed(2)} 億元`;
+      document.getElementById("kpiLandSub").innerHTML = `├─ 用地先期作業: ${landP.length} 筆 / ${sumAmt(landP).toFixed(2)} 億元<br>└─ 用地取得: ${landA.length} 筆 / ${sumAmt(landA).toFixed(2)} 億元`;
 
       const sub = deduplicatedRecords.filter(r => getMajorCategory(r["類別"]) === "補助類");
       const subB = sub.filter(r => r["類別"] === "橋梁改建/補助");
       const subR = sub.filter(r => r["類別"] === "逕流分擔/補助");
       document.getElementById("kpiSubCnt").textContent = `案件數: ${sub.length.toLocaleString()} 筆`;
       document.getElementById("kpiSubAmt").textContent = `核定經費: ${sumAmt(sub).toFixed(2)} 億元`;
-      document.getElementById("kpiSubSub").innerHTML = `├─ 橋梁改建: ${subB.length} 筆 / ${sumAmt(subB).toFixed(2)} 億元<br>└─ 逕流分擔: ${subR.length} 筆 / ${sumAmt(subR).toFixed(2)} 億元`;
+      document.getElementById("kpiSubSub").innerHTML = `├─ 橋梁改建/補助: ${subB.length} 筆 / ${sumAmt(subB).toFixed(2)} 億元<br>└─ 逕流分擔/補助: ${subR.length} 筆 / ${sumAmt(subR).toFixed(2)} 億元`;
 
-      // 各縣市首要歸屬排行前 4 名
       const cMapAmt = {}, cMapCnt = {};
       deduplicatedRecords.forEach(r => {
         const p = extractPrimaryCounty(r["縣市"]);
@@ -893,7 +1054,6 @@
       }
     }
 
-    // 簡報一鍵複製圖表至剪貼簿
     async function copyChartToClipboard(chartInstance, chartTitle) {
       try {
         const dataUrl = chartInstance.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: "#ffffff" });
@@ -913,7 +1073,6 @@
       a.click();
     }
 
-    // 匯出 Excel
     function exportCurrentExcel() {
       if (!filteredRecords.length) {
         alert("目前畫面上無可匯出的數據！");
@@ -922,10 +1081,9 @@
       const ws = XLSX.utils.json_to_sheet(filteredRecords.map(({ id, ...rest }) => rest));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "工程統計明細");
-      XLSX.writeFile(wb, `水利先期檢討統計${getYearRangeLabel()}.xlsx`);
+      XLSX.writeFile(wb, `防洪工程統計明細${getYearRangeLabel()}.xlsx`);
     }
 
-    // 管理者驗證與編輯邏輯
     function openAdminModal() {
       document.getElementById("modalAdmin").classList.remove("hidden");
       document.getElementById("inputAdminPass").focus();
@@ -946,9 +1104,10 @@
         const json = await res.json();
         if (json.status === "success") {
           adminPasscode = pass;
-          document.getElementById("btnAdminLogin").classList.add("hidden");
-          document.getElementById("btnAdminLogout").classList.remove("hidden");
-          document.getElementById("btnImportExcel").classList.remove("hidden");
+          document.getElementById("menuAdminLogin").classList.add("hidden");
+          document.getElementById("menuAdminLogout").classList.remove("hidden");
+          document.getElementById("menuImportExcel").classList.remove("hidden");
+          document.getElementById("adminIndicatorDot").classList.remove("hidden");
           closeAdminModal();
           renderDetailTable();
         } else {
@@ -962,9 +1121,10 @@
     function logoutAdmin() {
       adminPasscode = "";
       document.getElementById("inputAdminPass").value = "";
-      document.getElementById("btnAdminLogin").classList.remove("hidden");
-      document.getElementById("btnAdminLogout").classList.add("hidden");
-      document.getElementById("btnImportExcel").classList.add("hidden");
+      document.getElementById("menuAdminLogin").classList.remove("hidden");
+      document.getElementById("menuAdminLogout").classList.add("hidden");
+      document.getElementById("menuImportExcel").classList.add("hidden");
+      document.getElementById("adminIndicatorDot").classList.add("hidden");
       renderDetailTable();
     }
 
@@ -989,16 +1149,16 @@
       const updated = {
         ...orig,
         id,
-        "年度": document.getElementById("editYear").value.trim(),
-        "分署": document.getElementById("editBranch").value.trim().replace("水規所", "水規分署"),
-        "縣市": document.getElementById("editCounty").value.trim().replace(/台/g, "臺"),
-        "水系": document.getElementById("editWater").value.trim(),
-        "案件名稱": document.getElementById("editName").value.trim(),
+        "年度": document.getElementById("editYear").value.normalize("NFKC").trim(),
+        "分署": document.getElementById("editBranch").value.normalize("NFKC").trim().replace("水規所", "水規分署"),
+        "縣市": document.getElementById("editCounty").value.normalize("NFKC").trim().replace(/台/g, "臺"),
+        "水系": document.getElementById("editWater").value.normalize("NFKC").trim(),
+        "案件名稱": document.getElementById("editName").value.normalize("NFKC").trim(),
         "核定經費_千元": parseFloat(document.getElementById("editApproved").value) || 0,
         "可支用經費_千元": parseFloat(document.getElementById("editUsable").value) || 0,
-        "工程編號": document.getElementById("editCode").value.trim(),
-        "座標點位": document.getElementById("editCoords").value.trim(),
-        "備註資訊": document.getElementById("editRemark").value.trim()
+        "工程編號": document.getElementById("editCode").value.normalize("NFKC").trim(),
+        "座標點位": document.getElementById("editCoords").value.normalize("NFKC").trim(),
+        "備註資訊": document.getElementById("editRemark").value.normalize("NFKC").trim()
       };
 
       try {
@@ -1019,7 +1179,6 @@
       }
     }
 
-    // 前端 Excel 解析與批次防重複匯入
     function triggerExcelInput() {
       document.getElementById("fileExcelInput").click();
     }
@@ -1046,28 +1205,28 @@
 
           const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: "" });
           rows.forEach(row => {
-            const pName = String(row["案件名稱"] || row["工程名稱"] || "").trim();
-            const bName = String(row["分署"] || row["執行單位"] || "").trim().replace("水規所", "水規分署");
+            const pName = String(row["案件名稱"] || row["工程名稱"] || "").normalize("NFKC").trim();
+            const bName = String(row["分署"] || row["執行單位"] || "").normalize("NFKC").trim().replace("水規所", "水規分署");
             if (!pName || !bName || pName.includes("合計") || pName.includes("小計")) return;
 
             parsed.push({
-              "年度": String(row["年度"] || defaultYear).trim(),
-              "類別": String(row["類別"] || cat).trim(),
-              "附表": String(row["附表"] || sheetName).trim(),
+              "年度": String(row["年度"] || defaultYear).normalize("NFKC").trim(),
+              "類別": normalizeCategoryName(row["類別"] || cat),
+              "附表": String(row["附表"] || sheetName).normalize("NFKC").trim(),
               "分署": bName,
-              "縣市": String(row["縣市"] || "").trim().replace(/台/g, "臺"),
-              "水系": String(row["水系"] || "").trim(),
+              "縣市": String(row["縣市"] || "").normalize("NFKC").trim().replace(/台/g, "臺"),
+              "水系": String(row["水系"] || "").normalize("NFKC").trim(),
               "案件名稱": pName,
               "核定經費_千元": parseFloat(row["核定經費_千元"] || row["核定經費(千元)"] || row["核定經費"] || 0) || 0,
               "可支用經費_千元": parseFloat(row["可支用經費_千元"] || row["可支用經費(千元)"] || row["可支用經費"] || 0) || 0,
-              "工程編號": String(row["工程編號"] || "").trim(),
-              "座標點位": String(row["座標點位"] || "").trim(),
+              "工程編號": String(row["工程編號"] || "").normalize("NFKC").trim(),
+              "座標點位": String(row["座標點位"] || "").normalize("NFKC").trim(),
               "堤防_m": parseFloat(row["堤防_m"] || 0) || 0,
               "護岸_m": parseFloat(row["護岸_m"] || 0) || 0,
               "水門_座": parseInt(row["水門_座"] || 0, 10) || 0,
               "水防道路_m2": parseFloat(row["水防道路_m2"] || 0) || 0,
-              "其他結構說明": String(row["其他結構說明"] || "").trim(),
-              "備註資訊": String(row["備註資訊"] || row["備註"] || "").trim()
+              "其他結構說明": String(row["其他結構說明"] || "").normalize("NFKC").trim(),
+              "備註資訊": String(row["備註資訊"] || row["備註"] || "").normalize("NFKC").trim()
             });
           });
         });
