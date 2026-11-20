@@ -238,20 +238,35 @@
           <div class="text-[11px] font-normal text-slate-400 shrink-0">單位:千元</div>
         </div>
         <div class="table-container border border-slate-200 rounded">
-          <table class="w-full text-left border-collapse text-xs">
+          <table class="table-fixed w-full text-left border-collapse text-xs">
+            <colgroup>
+              <col style="width: 46px;" />
+              <col style="width: 72px;" />
+              <col style="width: 48px;" />
+              <col style="width: 60px;" />
+              <col style="width: 60px;" />
+              <col style="width: 264px;" />
+              <col style="width: 96px;" />
+              <col style="width: 96px;" />
+              <col style="width: 196px;" />
+              <col style="width: 110px;" />
+              <col style="width: 165px;" />
+              <col style="width: 92px;" />
+              <col id="colActionWidth" style="width: 0px;" />
+            </colgroup>
             <thead>
               <tr>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[46px] min-w-[46px] cursor-pointer" onclick="sortDetailTable('年度')">年度</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[72px] min-w-[72px] cursor-pointer" onclick="sortDetailTable('類別')">類別</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[48px] min-w-[48px] cursor-pointer" onclick="sortDetailTable('分署')">分署</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[60px] min-w-[60px] cursor-pointer" onclick="sortDetailTable('縣市')">縣市</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[60px] min-w-[60px]">水系</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[264px] min-w-[264px]">案件名稱</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[96px] min-w-[96px] cursor-pointer" onclick="sortDetailTable('核定經費_千元')">核定經費</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[96px] min-w-[96px] cursor-pointer" onclick="sortDetailTable('可支用經費_千元')">可支用經費</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[196px] min-w-[196px]">工程編號</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[110px]">座標點位</th>
-                <th class="p-2 whitespace-nowrap text-center align-middle w-[165px]">備註資訊</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('年度')">年度</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('類別')">類別</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('分署')">分署</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('縣市')">縣市</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle">水系</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle">案件名稱</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('核定經費_千元')">核定經費</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('可支用經費_千元')">可支用經費</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle">工程編號</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle">座標點位</th>
+                <th class="p-2 whitespace-nowrap text-center align-middle">備註資訊</th>
                 <th class="p-2 whitespace-nowrap text-center align-middle">附表</th>
                 <th id="thActionCol" class="p-2 whitespace-nowrap text-center align-middle hidden">操作</th>
               </tr>
