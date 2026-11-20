@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>歷年水利先期檢討工程數據查詢與分析系統 (雲端版)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f1f5f9;
+      color: #1e293b;
+      overflow-x: hidden;
+    }
+    .table-container {
+      max-height: 540px;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      background-color: #1f538d;
+      color: #ffffff;
+      z-index: 10;
+      user-select: none;
+    }
+    thead th:hover {
+      background-color: #14375e;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- 頂部標題與權限狀態列 -->
+  <header class="bg-[#1a365d] text-white px-5 py-3 shadow-sm flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-lg font-bold tracking-wide">歷年水利先期檢討工程數據查詢與智慧分析系統</h1>
+      <p class="text-xs text-slate-300 mt-0.5">雲端即時資料庫 (Google Sheets API) ｜ 跨年度防重複統計與簡報出圖版</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="syncStatusBadge" class="text-xs bg-slate-700 px-2.5 py-1 rounded text-slate-200">連線準備中...</span>
+      <button onclick="loadAllData(true)" class="text-xs bg-slate-600 hover:bg-slate-500 px-3 py-1.5 rounded font-medium transition">重新同步資料</button>
+      <button id="btnAdminLogin" onclick="openAdminModal()" class="text-xs bg-amber-600 hover:bg-amber-500 px-3 py-1.5 rounded font-bold transition">管理者登入</button>
+      <button id="btnAdminLogout" onclick="logoutAdmin()" class="hidden text-xs bg-emerald-700 hover:bg-emerald-600 px-3 py-1.5 rounded font-bold transition">管理者已驗證 (登出)</button>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 py-3 space-y-3">
+
+    <!-- 查詢條件控制列 -->
+    <section class="bg-white rounded-lg shadow-sm border border-slate-200 p-3 flex flex-wrap items-center gap-3">
+      <div class="flex items-center gap-1.5">
+        <label class="text-sm font-bold text-slate-700">年度區間：</label>
+        <select id="selYearStart" onchange="onYearChange()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
+        <span class="text-sm text-slate-600">至</span>
+        <select id="selYearEnd" onchange="onYearChange()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
+        <span class="text-sm text-slate-600">年</span>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <label class="text-sm font-bold text-slate-700">統計維度：</label>
+        <select id="selDimension" onchange="onDimensionChange()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white">
+          <option value="branch">按分署統計</option>
+          <option value="county">按縣市統計</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <label id="lblTarget" class="text-sm font-bold text-slate-700">分署別：</label>
+        <select id="selTarget" onchange="applyFilters()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <label id="lblSubFilter" class="text-sm font-bold text-slate-700">縣市篩選：</label>
+        <select id="selSubFilter" onchange="applyFilters()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
+      </div>
+
+      <div class="flex items-center gap-1.5 flex-1 min-w-[200px]">
+        <label class="text-sm font-bold text-slate-700">關鍵字：</label>
+        <input id="txtKeyword" type="text" onkeyup="if(event.key==='Enter') applyFilters()" placeholder="搜尋案件名稱 / 水系 / 工程編號" class="border border-slate-300 rounded px-2.5 py-1 text-sm w-full max-w-[240px]" />
+        <button onclick="applyFilters()" class="bg-[#1f538d] hover:bg-[#14375e] text-white text-sm font-bold px-3.5 py-1 rounded transition">查詢</button>
+      </div>
+
+      <div class="flex items-center gap-2 ml-auto">
+        <button id="btnImportExcel" onclick="triggerExcelInput()" class="hidden bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold px-3 py-1 rounded transition">匯入 Excel</button>
+        <input type="file" id="fileExcelInput" accept=".xlsx,.xls,.xlsm" class="hidden" onchange="handleExcelFileSelect(event)" />
+        <button onclick="exportCurrentExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold px-3 py-1 rounded transition">匯出 Excel</button>
+      </div>
+    </section>
+
+    <!-- 類別多選核取方塊 -->
+    <section class="bg-white rounded-lg shadow-sm border border-slate-200 px-3 py-2 flex flex-wrap items-center gap-4 text-sm">
+      <span class="font-bold text-slate-700">篩選條件：</span>
+      <label class="inline-flex items-center gap-1.5 font-bold cursor-pointer">
+        <input type="checkbox" id="chkAll" checked onchange="toggleAllCategories(this.checked)" class="rounded text-blue-700" />
+        <span>全選</span>
+      </label>
+      <div id="categoryCheckboxes" class="flex flex-wrap items-center gap-4"></div>
+    </section>
+
+    <!-- 5 張 KPI 統計卡片 -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+      <div class="bg-[#e3f2fd] border border-blue-200 rounded-lg p-3">
+        <div class="text-sm font-bold text-[#0d47a1]">總核定數據</div>
+        <div id="kpiTotalCnt" class="text-xs text-slate-700 mt-1">案件數: - 筆</div>
+        <div id="kpiTotalAmt" class="text-base font-bold text-[#0d47a1] mt-0.5">核定經費: - 億元</div>
+      </div>
+      <div class="bg-[#e8f5e9] border border-green-200 rounded-lg p-3">
+        <div class="text-sm font-bold text-[#1b5e20]">工程類案件</div>
+        <div id="kpiEngCnt" class="text-xs text-slate-700 mt-1">案件數: - 筆</div>
+        <div id="kpiEngAmt" class="text-base font-bold text-[#1b5e20] mt-0.5">核定經費: - 億元</div>
+        <div id="kpiEngSub" class="text-[11px] text-[#2e7d32] mt-1 leading-tight"></div>
+      </div>
+      <div class="bg-[#fff8e1] border border-amber-200 rounded-lg p-3">
+        <div class="text-sm font-bold text-[#f57f17]">用地類案件</div>
+        <div id="kpiLandCnt" class="text-xs text-slate-700 mt-1">案件數: - 筆</div>
+        <div id="kpiLandAmt" class="text-base font-bold text-[#f57f17] mt-0.5">核定經費: - 億元</div>
+        <div id="kpiLandSub" class="text-[11px] text-[#e65100] mt-1 leading-tight"></div>
+      </div>
+      <div class="bg-[#e0f2f1] border border-teal-200 rounded-lg p-3">
+        <div class="text-sm font-bold text-[#004d40]">補助類案件</div>
+        <div id="kpiSubCnt" class="text-xs text-slate-700 mt-1">案件數: - 筆</div>
+        <div id="kpiSubAmt" class="text-base font-bold text-[#004d40] mt-0.5">核定經費: - 億元</div>
+        <div id="kpiSubSub" class="text-[11px] text-[#00695c] mt-1 leading-tight"></div>
+      </div>
+      <div class="bg-[#f3e5f5] border border-purple-200 rounded-lg p-3">
+        <div class="text-sm font-bold text-[#4a148c]">各縣市核定經費 (首要縣市歸屬)</div>
+        <div id="kpiCountyCnt" class="text-xs text-slate-700 mt-1">案件數: - 筆</div>
+        <div id="kpiCountyAmt" class="text-base font-bold text-[#4a148c] mt-0.5">核定經費: - 億元</div>
+        <div id="kpiCountySub" class="text-[11px] text-[#6a1b9a] mt-1 leading-tight"></div>
+      </div>
+    </section>
+
+    <!-- 主內容頁籤容器 -->
+    <section class="bg-white rounded-lg shadow-sm border border-slate-200 p-3">
+      <!-- 頁籤切換鈕 -->
+      <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2.5 mb-3">
+        <button id="tabBtnDetail" onclick="switchTab('detail')" class="px-4 py-1.5 rounded text-sm font-bold bg-[#1f538d] text-white transition">案件明細</button>
+        <button id="tabBtnCounty" onclick="switchTab('county')" class="px-4 py-1.5 rounded text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">各縣市經費分配比較表</button>
+        <button id="tabBtnTrend" onclick="switchTab('trend')" class="px-4 py-1.5 rounded text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">年度趨勢圖</button>
+        <button id="tabBtnBranch" onclick="switchTab('branch')" class="px-4 py-1.5 rounded text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">各分署經費比較圖</button>
+      </div>
+
+      <!-- 頁籤 1：案件明細 -->
+      <div id="viewDetail">
+        <div id="lblDetailSummary" class="text-xs font-bold text-slate-700 mb-2">載入資料中...</div>
+        <div class="table-container border border-slate-200 rounded">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr>
+                <th class="p-2 cursor-pointer" onclick="sortDetailTable('年度')">年度 ⇕</th>
+                <th class="p-2 cursor-pointer" onclick="sortDetailTable('類別')">類別 ⇕</th>
+                <th class="p-2">附表</th>
+                <th class="p-2 cursor-pointer" onclick="sortDetailTable('分署')">分署 ⇕</th>
+                <th class="p-2 cursor-pointer" onclick="sortDetailTable('縣市')">縣市 ⇕</th>
+                <th class="p-2">水系</th>
+                <th class="p-2 min-w-[260px]">案件名稱</th>
+                <th class="p-2 text-right cursor-pointer" onclick="sortDetailTable('核定經費_千元')">核定經費(千元) ⇕</th>
+                <th class="p-2 text-right cursor-pointer" onclick="sortDetailTable('可支用經費_千元')">可支用經費(千元) ⇕</th>
+                <th class="p-2">工程編號</th>
+                <th class="p-2">座標點位</th>
+                <th class="p-2">備註資訊</th>
+                <th id="thActionCol" class="p-2 text-center hidden">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyDetail" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 頁籤 2：各縣市經費分配比較表 -->
+      <div id="viewCounty" class="hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <!-- 左側精簡 4 欄表 -->
+          <div class="lg:col-span-4 border border-slate-200 rounded-lg p-2.5 bg-white">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-[#1a365d]">各縣市經費分配表（點擊列檢視右側趨勢）</span>
+              <button onclick="resetCountyChartToTotal()" class="text-xs bg-[#2b6cb0] hover:bg-[#1a365d] text-white px-2.5 py-1 rounded font-bold transition">顯示全臺合計</button>
+            </div>
+            <div class="max-h-[500px] overflow-y-auto border border-slate-200 rounded">
+              <table class="w-full text-xs border-collapse">
+                <thead>
+                  <tr>
+                    <th class="p-2 text-center">順序</th>
+                    <th class="p-2 text-center">縣市別</th>
+                    <th class="p-2 text-right">案件數</th>
+                    <th class="p-2 text-right">總經費(億元)</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyCounty" class="divide-y divide-slate-200"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 右側縣市趨勢圖 -->
+          <div class="lg:col-span-8 border border-slate-200 rounded-lg p-3 bg-slate-50 flex flex-col">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <span class="text-xs text-slate-600">點選左側縣市即時切換趨勢；點擊「顯示全臺合計」可恢復全臺統計</span>
+              <div class="flex items-center gap-2">
+                <button onclick="copyChartToClipboard(chartCountyTrend, '縣市年度趨勢圖')" class="text-xs bg-teal-700 hover:bg-teal-800 text-white px-3 py-1 rounded font-bold">複製圖片貼到簡報</button>
+                <button onclick="downloadChartPng(chartCountyTrend, selectedCountyForChart + '_年度趨勢圖')" class="text-xs bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded font-bold">另存 PNG</button>
+              </div>
+            </div>
+            <div id="chartCountyTrend" class="w-full h-[480px] bg-white rounded border border-slate-200"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 頁籤 3：年度趨勢圖 -->
+      <div id="viewTrend" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <span class="text-xs text-slate-600">簡報出圖工具：點擊右側按鈕可直接複製高解析度圖表至剪貼簿（於 PowerPoint 按 Ctrl+V 即可貼上）</span>
+          <div class="flex items-center gap-2">
+            <button onclick="copyChartToClipboard(chartTrend, '年度趨勢圖')" class="text-xs bg-[#1f538d] hover:bg-[#14375e] text-white px-3 py-1 rounded font-bold">複製圖片貼到簡報</button>
+            <button onclick="downloadChartPng(chartTrend, '年度趨勢圖')" class="text-xs bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded font-bold">另存 PNG</button>
+          </div>
+        </div>
+        <div id="chartTrend" class="w-full h-[500px] bg-white rounded border border-slate-200"></div>
+      </div>
+
+      <!-- 頁籤 4：各分署經費比較圖 -->
+      <div id="viewBranch" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <span class="text-xs text-slate-600">簡報出圖工具：點擊右側按鈕可直接複製高解析度圖表至剪貼簿（於 PowerPoint 按 Ctrl+V 即可貼上）</span>
+          <div class="flex items-center gap-2">
+            <button onclick="copyChartToClipboard(chartBranch, '各分署經費比較圖')" class="text-xs bg-[#1f538d] hover:bg-[#14375e] text-white px-3 py-1 rounded font-bold">複製圖片貼到簡報</button>
+            <button onclick="downloadChartPng(chartBranch, '各分署經費比較圖')" class="text-xs bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded font-bold">另存 PNG</button>
+          </div>
+        </div>
+        <div id="chartBranch" class="w-full h-[500px] bg-white rounded border border-slate-200"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 管理者登入驗證 Modal -->
+  <div id="modalAdmin" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg p-5 w-full max-w-sm">
+      <h2 class="text-base font-bold text-slate-800 mb-2">管理者權限驗證</h2>
+      <p class="text-xs text-slate-600 mb-3">輸入管理者密碼後，將解鎖「匯入 Excel」與「案件資料編輯」權限。</p>
+      <input id="inputAdminPass" type="password" onkeyup="if(event.key==='Enter') submitAdminLogin()" placeholder="請輸入管理者密碼" class="w-full border border-slate-300 rounded px-3 py-1.5 text-sm mb-3" />
+      <div class="flex justify-end gap-2">
+        <button onclick="closeAdminModal()" class="px-3 py-1.5 text-xs bg-slate-200 rounded font-bold">取消</button>
+        <button onclick="submitAdminLogin()" class="px-3 py-1.5 text-xs bg-[#1f538d] text-white rounded font-bold">確認登入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 單筆編輯案件 Modal -->
+  <div id="modalEdit" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg p-5 w-full max-w-lg space-y-3">
+      <h2 class="text-base font-bold text-[#1a365d]">編輯工程案件資訊</h2>
+      <input type="hidden" id="editId" />
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <label class="font-bold block mb-1">年度</label>
+          <input id="editYear" type="text" class="w-full border border-slate-300 rounded px-2 py-1" />
+        </div>
+        <div>
+          <label class="font-bold block mb-1">分署</label>
+          <input id="editBranch" type="text" class="w-full border border-slate-300 rounded px-2 py-1" />
+        </div>
+        <div>
+          <label class="font-bold block mb-1">縣市</label>
+          <input id="editCounty" type="text" class="w-full border border-slate-300 rounded px-2 py-1" />
+        </div>
+        <div>
+          <label class="font-bold block mb-1">水系</label>
+          <input id="editWater" type="text" class="w-full border border-slate-300 rounded px-2 py-1" />
+        </div>
+      </div>
+      <div class="text-xs">
+        <label class="font-bold block mb-1">案件名稱</label>
+        <input id="editName" type="text" class="w-full border border-slate-300 rounded px-2 py-1" />
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <label class="font-bold block mb-1">核定經費 (千元)</label>
+          <input id="editApproved" type="number" step="0.001" class="w-full border border-slate-300 rounded px-2 py-1" />
+        </div>
+        <div>
+          <label class="font-bold block mb-1">可支用經費 (千元)</label>
+          <input id="editUsable" type="number" step="0.001" class="w-full border border-slate-300 rounded px-2 py-1" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <label class="font-bold block mb-1">工程編號</label>
+          <input id="editCode" type="text" class="w-full border border-slate-300 rounded px-2 py-1" />
+        </div>
+        <div>
+          <label class="font-bold block mb-1">座標點位</label>
+          <input id="editCoords" type="text" class="w-full border border-slate-300 rounded px-2 py-1" />
+        </div>
+      </div>
+      <div class="text-xs">
+        <label class="font-bold block mb-1">備註資訊</label>
+        <textarea id="editRemark" rows="2" class="w-full border border-slate-300 rounded px-2 py-1"></textarea>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="document.getElementById('modalEdit').classList.add('hidden')" class="px-3 py-1.5 text-xs bg-slate-200 rounded font-bold">取消</button>
+        <button onclick="saveEditedProject()" class="px-4 py-1.5 text-xs bg-[#1f538d] text-white rounded font-bold">儲存寫入雲端</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Excel 匯入預覽確認 Modal -->
+  <div id="modalImportPreview" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-lg p-5 w-full max-w-3xl space-y-3">
+      <h2 class="text-base font-bold text-orange-700">Excel 智慧解析與雲端防重複寫入預覽</h2>
+      <p id="lblImportSummary" class="text-xs text-slate-700 font-bold"></p>
+      <div class="max-h-[340px] overflow-y-auto border border-slate-200 rounded">
+        <table class="w-full text-xs border-collapse">
+          <thead>
+            <tr>
+              <th class="p-2">年度</th>
+              <th class="p-2">分署</th>
+              <th class="p-2">類別</th>
+              <th class="p-2">案件名稱</th>
+              <th class="p-2 text-right">核定經費(千元)</th>
+              <th class="p-2">工程編號</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyImportPreview" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="document.getElementById('modalImportPreview').classList.add('hidden')" class="px-3 py-1.5 text-xs bg-slate-200 rounded font-bold">取消匯入</button>
+        <button onclick="confirmUploadImportRecords()" class="px-4 py-1.5 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded font-bold">確認寫入 Google 試算表</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ★ 請將此網址替換為您部署 Google Apps Script 後取得的「網頁應用程式網址 (Web App URL)」
+    const GAS_API_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+
+    const CHINESE_NUM_ORDER = {
+      "一": 1, "一分署": 1, "第一河川分署": 1,
+      "二": 2, "二分署": 2, "第二河川分署": 2,
+      "三": 3, "三分署": 3, "第三河川分署": 3,
+      "四": 4, "四分署": 4, "第四河川分署": 4,
+      "五": 5, "五分署": 5, "第五河川分署": 5,
+      "六": 6, "六分署": 6, "第六河川分署": 6,
+      "七": 7, "七分署": 7, "第七河川分署": 7,
+      "八": 8, "八分署": 8, "第八河川分署": 8,
+      "九": 9, "九分署": 9, "第九河川分署": 9,
+      "十": 10, "十分署": 10, "第十河川分署": 10,
+      "水規分署": 11, "水規所": 11
+    };
+
+    const STD_22_COUNTIES = [
+      "宜蘭縣", "基隆市", "臺北市", "新北市", "桃園市", "新竹縣", "新竹市",
+      "苗栗縣", "臺中市", "南投縣", "彰化縣", "雲林縣", "嘉義縣", "嘉義市",
+      "臺南市", "高雄市", "屏東縣", "臺東縣", "花蓮縣", "澎湖縣", "金門縣", "連江縣"
+    ];
+
+    const CATEGORIES_LIST = [
+      "工程", "委託設計/監造", "用地先期作業", "用地取得", "橋梁改建/補助", "逕流分擔/補助"
+    ];
+
+    let allRecords = [];
+    let filteredRecords = [];
+    let deduplicatedRecords = [];
+    let adminPasscode = "";
+    let selectedCountyForChart = "【全臺合計】";
+    let pendingImportRecords = [];
+    let detailSortAsc = {};
+
+    let chartCountyTrend = null;
+    let chartTrend = null;
+    let chartBranch = null;
+
+    window.addEventListener("DOMContentLoaded", () => {
+      initCategoryCheckboxes();
+      chartCountyTrend = echarts.init(document.getElementById("chartCountyTrend"));
+      chartTrend = echarts.init(document.getElementById("chartTrend"));
+      chartBranch = echarts.init(document.getElementById("chartBranch"));
+
+      window.addEventListener("resize", () => {
+        chartCountyTrend && chartCountyTrend.resize();
+        chartTrend && chartTrend.resize();
+        chartBranch && chartBranch.resize();
+      });
+
+      loadAllData(false);
+    });
+
+    function initCategoryCheckboxes() {
+      const container = document.getElementById("categoryCheckboxes");
+      container.innerHTML = CATEGORIES_LIST.map(cat => `
+        <label class="inline-flex items-center gap-1 cursor-pointer">
+          <input type="checkbox" class="cat-chk rounded text-blue-700" value="${cat}" checked onchange="onSingleCategoryChange()" />
+          <span>${cat}</span>
+        </label>
+      `).join("");
+    }
+
+    function toggleAllCategories(checked) {
+      document.querySelectorAll(".cat-chk").forEach(el => el.checked = checked);
+      applyFilters();
+    }
+
+    function onSingleCategoryChange() {
+      const chks = Array.from(document.querySelectorAll(".cat-chk"));
+      document.getElementById("chkAll").checked = chks.every(c => c.checked);
+      applyFilters();
+    }
+
+    async function loadAllData(forceNotify) {
+      const badge = document.getElementById("syncStatusBadge");
+      badge.textContent = "雲端同步中...";
+      try {
+        const res = await fetch(GAS_API_URL);
+        const json = await res.json();
+        if (json.status !== "success") throw new Error(json.message || "API 回傳異常");
+
+        allRecords = (json.data || []).map(r => ({
+          ...r,
+          "縣市": String(r["縣市"] || "").replace(/台/g, "臺"),
+          "分署": String(r["分署"] || "").replace("水規所", "水規分署"),
+          "核定經費_千元": parseFloat(r["核定經費_千元"]) || 0,
+          "可支用經費_千元": parseFloat(r["可支用經費_千元"]) || 0
+        }));
+
+        populateDropdownOptions();
+        applyFilters();
+        badge.textContent = `已同步 (${allRecords.length} 筆)`;
+        if (forceNotify) alert(`雲端資料同步完成，共載入 ${allRecords.length} 筆紀錄！`);
+      } catch (err) {
+        badge.textContent = "連線失敗 (請確認 GAS_API_URL)";
+        console.error(err);
+      }
+    }
+
+    function populateDropdownOptions() {
+      const years = Array.from(new Set(allRecords.map(r => String(r["年度"])).filter(Boolean))).sort();
+      const yearList = years.length ? years : ["110", "111", "112", "113", "114", "115"];
+
+      const selStart = document.getElementById("selYearStart");
+      const selEnd = document.getElementById("selYearEnd");
+      selStart.innerHTML = yearList.map(y => `<option value="${y}">${y}</option>`).join("");
+      selEnd.innerHTML = yearList.map(y => `<option value="${y}">${y}</option>`).join("");
+      selStart.value = yearList[0];
+      selEnd.value = yearList[yearList.length - 1];
+
+      onDimensionChange();
+    }
+
+    function onYearChange() {
+      const s = document.getElementById("selYearStart");
+      const e = document.getElementById("selYearEnd");
+      if (parseInt(s.value, 10) > parseInt(e.value, 10)) {
+        e.value = s.value;
+      }
+      applyFilters();
+    }
+
+    function onDimensionChange() {
+      const dim = document.getElementById("selDimension").value;
+      const branches = Array.from(new Set(allRecords.map(r => r["分署"]).filter(Boolean)))
+        .sort((a, b) => (CHINESE_NUM_ORDER[a] || 99) - (CHINESE_NUM_ORDER[b] || 99));
+
+      const selTarget = document.getElementById("selTarget");
+      const selSub = document.getElementById("selSubFilter");
+
+      if (dim === "branch") {
+        document.getElementById("lblTarget").textContent = "分署別：";
+        document.getElementById("lblSubFilter").textContent = "縣市篩選：";
+        selTarget.innerHTML = ["【全部分署】", ...branches].map(v => `<option value="${v}">${v}</option>`).join("");
+        selSub.innerHTML = ["【全部縣市】", ...STD_22_COUNTIES].map(v => `<option value="${v}">${v}</option>`).join("");
+      } else {
+        document.getElementById("lblTarget").textContent = "縣市別：";
+        document.getElementById("lblSubFilter").textContent = "分署篩選：";
+        selTarget.innerHTML = ["【全部縣市】", ...STD_22_COUNTIES].map(v => `<option value="${v}">${v}</option>`).join("");
+        selSub.innerHTML = ["【全部分署】", ...branches].map(v => `<option value="${v}">${v}</option>`).join("");
+      }
+      applyFilters();
+    }
+
+    function getMajorCategory(cat) {
+      if (["工程", "委託設計/監造"].includes(cat)) return "工程類";
+      if (["用地先期作業", "用地取得"].includes(cat)) return "用地類";
+      return "補助類";
+    }
+
+    function extractPrimaryCounty(raw) {
+      const clean = String(raw || "").replace(/[\r\n]/g, "").replace(/台/g, "臺").replace(/、/g, "/");
+      const parts = clean.split("/").map(s => s.trim()).filter(Boolean);
+      if (parts.length && STD_22_COUNTIES.includes(parts[0])) return parts[0];
+      return "全國性或未分配";
+    }
+
+    function applyFilters() {
+      const sY = parseInt(document.getElementById("selYearStart").value, 10);
+      const eY = parseInt(document.getElementById("selYearEnd").value, 10);
+      const dim = document.getElementById("selDimension").value;
+      const target = document.getElementById("selTarget").value;
+      const sub = document.getElementById("selSubFilter").value;
+      const kw = document.getElementById("txtKeyword").value.trim().toLowerCase();
+      const selectedCats = Array.from(document.querySelectorAll(".cat-chk:checked")).map(c => c.value);
+
+      filteredRecords = allRecords.filter(r => {
+        const yr = parseInt(r["年度"], 10);
+        if (yr < sY || yr > eY) return false;
+        if (!selectedCats.includes(r["類別"])) return false;
+
+        if (dim === "branch") {
+          if (target !== "【全部分署】" && r["分署"] !== target) return false;
+          if (sub !== "【全部縣市】" && !r["縣市"].includes(sub)) return false;
+        } else {
+          if (target !== "【全部縣市】" && !r["縣市"].includes(target)) return false;
+          if (sub !== "【全部分署】" && r["分署"] !== sub) return false;
+        }
+
+        if (kw) {
+          const hay = `${r["案件名稱"]} ${r["水系"]} ${r["工程編號"]} ${r["備註資訊"]}`.toLowerCase();
+          if (!hay.includes(kw)) return false;
+        }
+        return true;
+      });
+
+      // 跨年度去重與排除核定經費 0 元（與桌面版完全一致的 KPI 邏輯）
+      const valid = filteredRecords.filter(r => r["核定經費_千元"] > 0);
+      if (sY !== eY) {
+        const sorted = [...valid].sort((a, b) => {
+          if (a["分署"] !== b["分署"]) return a["分署"].localeCompare(b["分署"]);
+          if (a["案件名稱"] !== b["案件名稱"]) return a["案件名稱"].localeCompare(b["案件名稱"]);
+          if (b["年度"] !== a["年度"]) return parseInt(b["年度"]) - parseInt(a["年度"]);
+          return b["核定經費_千元"] - a["核定經費_千元"];
+        });
+        const seen = new Set();
+        deduplicatedRecords = sorted.filter(r => {
+          const key = `${r["分署"]}__${r["案件名稱"]}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      } else {
+        deduplicatedRecords = valid;
+      }
+
+      updateKpiCards();
+      renderDetailTable();
+      renderCountyTable();
+      renderActiveCharts();
+    }
+
+    function updateKpiCards() {
+      const sumAmt = arr => arr.reduce((acc, r) => acc + r["核定經費_千元"], 0) / 100000;
+
+      document.getElementById("kpiTotalCnt").textContent = `案件數: ${deduplicatedRecords.length.toLocaleString()} 筆`;
+      document.getElementById("kpiTotalAmt").textContent = `核定經費: ${sumAmt(deduplicatedRecords).toFixed(2)} 億元`;
+
+      const eng = deduplicatedRecords.filter(r => getMajorCategory(r["類別"]) === "工程類");
+      const engG = eng.filter(r => r["類別"] === "工程");
+      const engD = eng.filter(r => r["類別"] === "委託設計/監造");
+      document.getElementById("kpiEngCnt").textContent = `案件數: ${eng.length.toLocaleString()} 筆`;
+      document.getElementById("kpiEngAmt").textContent = `核定經費: ${sumAmt(eng).toFixed(2)} 億元`;
+      document.getElementById("kpiEngSub").innerHTML = `├─ 一般工程: ${engG.length} 筆 / ${sumAmt(engG).toFixed(2)} 億元<br>└─ 委託設計/監造: ${engD.length} 筆 / ${sumAmt(engD).toFixed(2)} 億元`;
+
+      const land = deduplicatedRecords.filter(r => getMajorCategory(r["類別"]) === "用地類");
+      const landP = land.filter(r => r["類別"] === "用地先期作業");
+      const landA = land.filter(r => r["類別"] === "用地取得");
+      document.getElementById("kpiLandCnt").textContent = `案件數: ${land.length.toLocaleString()} 筆`;
+      document.getElementById("kpiLandAmt").textContent = `核定經費: ${sumAmt(land).toFixed(2)} 億元`;
+      document.getElementById("kpiLandSub").innerHTML = `├─ 用地先期: ${landP.length} 筆 / ${sumAmt(landP).toFixed(2)} 億元<br>└─ 用地取得: ${landA.length} 筆 / ${sumAmt(landA).toFixed(2)} 億元`;
+
+      const sub = deduplicatedRecords.filter(r => getMajorCategory(r["類別"]) === "補助類");
+      const subB = sub.filter(r => r["類別"] === "橋梁改建/補助");
+      const subR = sub.filter(r => r["類別"] === "逕流分擔/補助");
+      document.getElementById("kpiSubCnt").textContent = `案件數: ${sub.length.toLocaleString()} 筆`;
+      document.getElementById("kpiSubAmt").textContent = `核定經費: ${sumAmt(sub).toFixed(2)} 億元`;
+      document.getElementById("kpiSubSub").innerHTML = `├─ 橋梁改建: ${subB.length} 筆 / ${sumAmt(subB).toFixed(2)} 億元<br>└─ 逕流分擔: ${subR.length} 筆 / ${sumAmt(subR).toFixed(2)} 億元`;
+
+      // 各縣市首要歸屬排行前 4 名
+      const cMapAmt = {}, cMapCnt = {};
+      deduplicatedRecords.forEach(r => {
+        const p = extractPrimaryCounty(r["縣市"]);
+        cMapAmt[p] = (cMapAmt[p] || 0) + r["核定經費_千元"];
+        cMapCnt[p] = (cMapCnt[p] || 0) + 1;
+      });
+      const sortedC = Object.keys(cMapAmt).sort((a, b) => cMapAmt[b] - cMapAmt[a]);
+      const topLines = sortedC.slice(0, 4).map((c, idx) => {
+        const prefix = idx === Math.min(3, sortedC.length - 1) ? "└─ " : "├─ ";
+        return `${prefix}${c}: ${cMapCnt[c]}筆 / ${(cMapAmt[c] / 100000).toFixed(2)}億元`;
+      });
+      document.getElementById("kpiCountyCnt").textContent = `案件數: ${deduplicatedRecords.length.toLocaleString()} 筆`;
+      document.getElementById("kpiCountyAmt").textContent = `核定經費: ${sumAmt(deduplicatedRecords).toFixed(2)} 億元`;
+      document.getElementById("kpiCountySub").innerHTML = topLines.join("<br>");
+    }
+
+    function renderDetailTable() {
+      const isAdmin = Boolean(adminPasscode);
+      document.getElementById("thActionCol").classList.toggle("hidden", !isAdmin);
+      document.getElementById("lblDetailSummary").textContent =
+        `共篩選出 ${filteredRecords.length.toLocaleString()} 筆歷史紀錄（頂部統計已排除核定經費 0 元及跨年度重複案件，實計 ${deduplicatedRecords.length.toLocaleString()} 筆）`;
+
+      const tbody = document.getElementById("tbodyDetail");
+      tbody.innerHTML = filteredRecords.map((r, idx) => {
+        const bg = idx % 2 === 0 ? "bg-slate-50/70" : "bg-white";
+        const editBtn = isAdmin
+          ? `<td class="p-2 text-center"><button onclick='openEditModal(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-0.5 rounded text-[11px]">編輯</button></td>`
+          : "";
+        return `
+          <tr class="${bg} hover:bg-sky-50">
+            <td class="p-2 text-center">${r["年度"]}</td>
+            <td class="p-2 text-center">${r["類別"]}</td>
+            <td class="p-2 text-center">${r["附表"] || "-"}</td>
+            <td class="p-2 text-center font-medium">${r["分署"] || "-"}</td>
+            <td class="p-2 text-center">${r["縣市"] || "-"}</td>
+            <td class="p-2 text-center">${r["水系"] || "-"}</td>
+            <td class="p-2 font-medium text-slate-800">${r["案件名稱"]}</td>
+            <td class="p-2 text-right font-mono">${r["核定經費_千元"].toLocaleString(undefined, { minimumFractionDigits: 3 })}</td>
+            <td class="p-2 text-right font-mono">${r["可支用經費_千元"].toLocaleString(undefined, { minimumFractionDigits: 3 })}</td>
+            <td class="p-2 text-center">${r["工程編號"] || "-"}</td>
+            <td class="p-2 text-center">${r["座標點位"] || "-"}</td>
+            <td class="p-2 text-slate-600 max-w-[240px] truncate" title="${r["備註資訊"] || ""}">${r["備註資訊"] || "-"}</td>
+            ${editBtn}
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function sortDetailTable(field) {
+      detailSortAsc[field] = !detailSortAsc[field];
+      const asc = detailSortAsc[field];
+      filteredRecords.sort((a, b) => {
+        if (typeof a[field] === "number") return asc ? a[field] - b[field] : b[field] - a[field];
+        if (field === "分署") {
+          const oa = CHINESE_NUM_ORDER[a[field]] || 99;
+          const ob = CHINESE_NUM_ORDER[b[field]] || 99;
+          return asc ? oa - ob : ob - oa;
+        }
+        return asc ? String(a[field]).localeCompare(String(b[field])) : String(b[field]).localeCompare(String(a[field]));
+      });
+      renderDetailTable();
+    }
+
+    function renderCountyTable() {
+      const cntMap = {}, amtMap = {};
+      STD_22_COUNTIES.forEach(c => { cntMap[c] = 0; amtMap[c] = 0; });
+      let unCnt = 0, unAmt = 0;
+
+      deduplicatedRecords.forEach(r => {
+        const p = extractPrimaryCounty(r["縣市"]);
+        if (STD_22_COUNTIES.includes(p)) {
+          cntMap[p] += 1;
+          amtMap[p] += r["核定經費_千元"];
+        } else {
+          unCnt += 1;
+          unAmt += r["核定經費_千元"];
+        }
+      });
+
+      let totCnt = unCnt, totAmt = unAmt / 100000;
+      const rows = STD_22_COUNTIES.map((c, idx) => {
+        const a = amtMap[c] / 100000;
+        totCnt += cntMap[c];
+        totAmt += a;
+        const selectedClass = selectedCountyForChart === c ? "bg-sky-100 font-bold" : (idx % 2 === 0 ? "bg-slate-50" : "bg-white");
+        return `
+          <tr onclick="selectCountyForTrend('${c}')" class="${selectedClass} hover:bg-sky-50 cursor-pointer">
+            <td class="p-2 text-center">${String(idx + 1).padStart(2, "0")}</td>
+            <td class="p-2 text-center">${c}</td>
+            <td class="p-2 text-right font-mono">${cntMap[c].toLocaleString()}</td>
+            <td class="p-2 text-right font-mono">${a.toFixed(2)}</td>
+          </tr>
+        `;
+      });
+
+      rows.push(`
+        <tr onclick="selectCountyForTrend('全國性或未分配')" class="bg-white hover:bg-sky-50 cursor-pointer">
+          <td class="p-2 text-center">23</td>
+          <td class="p-2 text-center">全國性或未分配</td>
+          <td class="p-2 text-right font-mono">${unCnt.toLocaleString()}</td>
+          <td class="p-2 text-right font-mono">${(unAmt / 100000).toFixed(2)}</td>
+        </tr>
+      `);
+
+      rows.push(`
+        <tr onclick="resetCountyChartToTotal()" class="bg-amber-100 font-bold cursor-pointer">
+          <td class="p-2 text-center">24</td>
+          <td class="p-2 text-center">【全臺合計】</td>
+          <td class="p-2 text-right font-mono">${totCnt.toLocaleString()}</td>
+          <td class="p-2 text-right font-mono">${totAmt.toFixed(2)}</td>
+        </tr>
+      `);
+
+      document.getElementById("tbodyCounty").innerHTML = rows.join("");
+    }
+
+    function selectCountyForTrend(countyName) {
+      selectedCountyForChart = countyName;
+      renderCountyTable();
+      renderCountyTrendChart();
+    }
+
+    function resetCountyChartToTotal() {
+      selectedCountyForChart = "【全臺合計】";
+      renderCountyTable();
+      renderCountyTrendChart();
+    }
+
+    function getYearRangeLabel() {
+      const s = document.getElementById("selYearStart").value;
+      const e = document.getElementById("selYearEnd").value;
+      return s === e ? `(${s}年度)` : `(${s}-${e}年度)`;
+    }
+
+    function getAllYearsInRange() {
+      const s = parseInt(document.getElementById("selYearStart").value, 10);
+      const e = parseInt(document.getElementById("selYearEnd").value, 10);
+      const list = [];
+      for (let y = s; y <= e; y++) list.push(String(y));
+      return list;
+    }
+
+    function renderCountyTrendChart() {
+      const years = getAllYearsInRange();
+      const targetData = selectedCountyForChart === "【全臺合計】"
+        ? deduplicatedRecords
+        : deduplicatedRecords.filter(r => extractPrimaryCounty(r["縣市"]) === selectedCountyForChart);
+
+      const budgets = years.map(y => Number((targetData.filter(r => String(r["年度"]) === y).reduce((a, b) => a + b["核定經費_千元"], 0) / 100000).toFixed(2)));
+      const counts = years.map(y => targetData.filter(r => String(r["年度"]) === y).length);
+
+      const totalB = budgets.reduce((a, b) => a + b, 0);
+      const totalC = counts.reduce((a, b) => a + b, 0);
+      const titleName = selectedCountyForChart === "【全臺合計】" ? "全臺各縣市合計" : selectedCountyForChart;
+
+      chartCountyTrend.setOption(buildDualLayerOption(
+        `${titleName}年度經費趨勢圖${getYearRangeLabel()}`,
+        `區間總核定：${totalB.toFixed(2)} 億元   ｜   總案件數：${totalC.toLocaleString()} 筆`,
+        years.map(y => `${y}年`),
+        budgets,
+        counts,
+        "#0d9488"
+      ), true);
+    }
+
+    function renderTrendChart() {
+      const years = getAllYearsInRange();
+      const budgets = years.map(y => Number((deduplicatedRecords.filter(r => String(r["年度"]) === y).reduce((a, b) => a + b["核定經費_千元"], 0) / 100000).toFixed(2)));
+      const counts = years.map(y => deduplicatedRecords.filter(r => String(r["年度"]) === y).length);
+      const totalB = budgets.reduce((a, b) => a + b, 0);
+      const totalC = counts.reduce((a, b) => a + b, 0);
+      const targetLbl = document.getElementById("selTarget").value;
+
+      chartTrend.setOption(buildDualLayerOption(
+        `年度趨勢圖${getYearRangeLabel()}`,
+        `查詢範圍：${targetLbl}   ｜   區間總核定：${totalB.toFixed(2)} 億元   ｜   總案件數：${totalC.toLocaleString()} 筆`,
+        years.map(y => `${y}年`),
+        budgets,
+        counts,
+        "#d97706"
+      ), true);
+    }
+
+    function renderBranchComparisonChart() {
+      const mapAmt = {}, mapCnt = {};
+      deduplicatedRecords.forEach(r => {
+        const b = r["分署"] || "未分類";
+        mapAmt[b] = (mapAmt[b] || 0) + r["核定經費_千元"];
+        mapCnt[b] = (mapCnt[b] || 0) + 1;
+      });
+
+      const branches = Object.keys(mapAmt).sort((a, b) => (CHINESE_NUM_ORDER[a] || 99) - (CHINESE_NUM_ORDER[b] || 99));
+      const labels = branches.map(b => b.includes("水規") ? "水規分署" : (b.length === 1 ? `${b}分署` : b));
+      const budgets = branches.map(b => Number((mapAmt[b] / 100000).toFixed(2)));
+      const counts = branches.map(b => mapCnt[b]);
+      const totalB = budgets.reduce((a, b) => a + b, 0);
+      const totalC = counts.reduce((a, b) => a + b, 0);
+
+      chartBranch.setOption(buildDualLayerOption(
+        `各分署經費比較圖${getYearRangeLabel()}`,
+        `合計核定：${totalB.toFixed(2)} 億元   ｜   總案件數：${totalC.toLocaleString()} 筆   ｜   單位數：${branches.length} 個`,
+        labels,
+        budgets,
+        counts,
+        "#0d9488"
+      ), true);
+    }
+
+    function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lineColor) {
+      const totalB = budgets.reduce((a, b) => a + b, 0);
+      const avgB = budgets.length ? totalB / budgets.length : 0;
+      const maxB = Math.max(...budgets, 0);
+
+      return {
+        backgroundColor: "#ffffff",
+        title: {
+          text: mainTitle,
+          subtext: subTitle,
+          left: "center",
+          top: 10,
+          itemGap: 10,
+          textStyle: { fontSize: 18, fontWeight: "bold", color: "#1a202c" },
+          subtextStyle: { fontSize: 13, fontWeight: "bold", color: "#1a365d" }
+        },
+        tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+        axisPointer: { link: [{ xAxisIndex: "all" }] },
+        grid: [
+          { left: "7%", right: "5%", top: 88, height: "44%" },
+          { left: "7%", right: "5%", top: "66%", height: "22%" }
+        ],
+        xAxis: [
+          { type: "category", data: xLabels, gridIndex: 0, axisLabel: { show: false } },
+          { type: "category", data: xLabels, gridIndex: 1, axisLabel: { fontWeight: "bold", color: "#1a202c" } }
+        ],
+        yAxis: [
+          { type: "value", name: "核定經費 (億元)", gridIndex: 0, max: maxB > 0 ? Math.ceil(maxB * 1.25) : 10, splitLine: { lineStyle: { type: "dashed", color: "#e2e8f0" } } },
+          { type: "value", name: "案件數 (筆)", gridIndex: 1, splitLine: { lineStyle: { type: "dashed", color: "#e2e8f0" } } }
+        ],
+        series: [
+          {
+            name: "核定經費 (億元)",
+            type: "bar",
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            barMaxWidth: 44,
+            data: budgets.map(v => ({
+              value: v,
+              itemStyle: { color: (v === maxB && budgets.length > 1 && maxB > 0) ? "#dd6b20" : "#2b6cb0", borderRadius: [4, 4, 0, 0] }
+            })),
+            label: {
+              show: true,
+              position: "top",
+              fontWeight: "bold",
+              fontSize: 11,
+              formatter: p => {
+                const pct = totalB > 0 ? ((p.value / totalB) * 100).toFixed(1) : "0.0";
+                return budgets.length > 1 ? `${p.value.toFixed(2)} 億\n(${pct}%)` : `${p.value.toFixed(2)} 億`;
+              }
+            },
+            markLine: budgets.length > 1 && maxB > 0 ? {
+              symbol: "none",
+              lineStyle: { type: "dotted", color: "#64748b", width: 1.5 },
+              label: { formatter: `平均 ${avgB.toFixed(2)} 億`, position: "insideEndTop" },
+              data: [{ yAxis: avgB }]
+            } : undefined
+          },
+          {
+            name: "案件數 (筆)",
+            type: "line",
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: counts,
+            symbol: "circle",
+            symbolSize: 8,
+            lineStyle: { color: lineColor, width: 2.5 },
+            itemStyle: { color: lineColor },
+            areaStyle: { color: lineColor, opacity: 0.15 },
+            label: { show: true, position: "top", fontWeight: "bold", fontSize: 11, formatter: "{c} 筆" }
+          }
+        ]
+      };
+    }
+
+    function switchTab(tab) {
+      ["Detail", "County", "Trend", "Branch"].forEach(name => {
+        document.getElementById(`view${name}`).classList.add("hidden");
+        const btn = document.getElementById(`tabBtn${name}`);
+        btn.classList.remove("bg-[#1f538d]", "text-white");
+        btn.classList.add("bg-slate-200", "text-slate-700");
+      });
+
+      const cap = tab.charAt(0).toUpperCase() + tab.slice(1);
+      document.getElementById(`view${cap}`).classList.remove("hidden");
+      const activeBtn = document.getElementById(`tabBtn${cap}`);
+      activeBtn.classList.remove("bg-slate-200", "text-slate-700");
+      activeBtn.classList.add("bg-[#1f538d]", "text-white");
+
+      setTimeout(() => {
+        renderActiveCharts();
+      }, 30);
+    }
+
+    function renderActiveCharts() {
+      if (!document.getElementById("viewCounty").classList.contains("hidden")) {
+        chartCountyTrend.resize();
+        renderCountyTrendChart();
+      }
+      if (!document.getElementById("viewTrend").classList.contains("hidden")) {
+        chartTrend.resize();
+        renderTrendChart();
+      }
+      if (!document.getElementById("viewBranch").classList.contains("hidden")) {
+        chartBranch.resize();
+        renderBranchComparisonChart();
+      }
+    }
+
+    // 簡報一鍵複製圖表至剪貼簿
+    async function copyChartToClipboard(chartInstance, chartTitle) {
+      try {
+        const dataUrl = chartInstance.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: "#ffffff" });
+        const blob = await (await fetch(dataUrl)).blob();
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        alert(`《${chartTitle}》已複製為高畫質圖片！\n請直接切換至 PowerPoint / Word 按下 Ctrl + V 貼上即可。`);
+      } catch (err) {
+        alert("瀏覽器剪貼簿複製受限（請確認網址為 HTTPS），建議改用右側「另存 PNG」功能。");
+      }
+    }
+
+    function downloadChartPng(chartInstance, filename) {
+      const dataUrl = chartInstance.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: "#ffffff" });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `${filename}${getYearRangeLabel()}.png`;
+      a.click();
+    }
+
+    // 匯出 Excel
+    function exportCurrentExcel() {
+      if (!filteredRecords.length) {
+        alert("目前畫面上無可匯出的數據！");
+        return;
+      }
+      const ws = XLSX.utils.json_to_sheet(filteredRecords.map(({ id, ...rest }) => rest));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "工程統計明細");
+      XLSX.writeFile(wb, `水利先期檢討統計${getYearRangeLabel()}.xlsx`);
+    }
+
+    // 管理者驗證與編輯邏輯
+    function openAdminModal() {
+      document.getElementById("modalAdmin").classList.remove("hidden");
+      document.getElementById("inputAdminPass").focus();
+    }
+
+    function closeAdminModal() {
+      document.getElementById("modalAdmin").classList.add("hidden");
+    }
+
+    async function submitAdminLogin() {
+      const pass = document.getElementById("inputAdminPass").value.trim();
+      if (!pass) return;
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "verify_admin", passcode: pass })
+        });
+        const json = await res.json();
+        if (json.status === "success") {
+          adminPasscode = pass;
+          document.getElementById("btnAdminLogin").classList.add("hidden");
+          document.getElementById("btnAdminLogout").classList.remove("hidden");
+          document.getElementById("btnImportExcel").classList.remove("hidden");
+          closeAdminModal();
+          renderDetailTable();
+        } else {
+          alert(json.message || "密碼錯誤");
+        }
+      } catch (err) {
+        alert("驗證連線失敗：" + err.message);
+      }
+    }
+
+    function logoutAdmin() {
+      adminPasscode = "";
+      document.getElementById("inputAdminPass").value = "";
+      document.getElementById("btnAdminLogin").classList.remove("hidden");
+      document.getElementById("btnAdminLogout").classList.add("hidden");
+      document.getElementById("btnImportExcel").classList.add("hidden");
+      renderDetailTable();
+    }
+
+    function openEditModal(rec) {
+      document.getElementById("editId").value = rec.id;
+      document.getElementById("editYear").value = rec["年度"];
+      document.getElementById("editBranch").value = rec["分署"];
+      document.getElementById("editCounty").value = rec["縣市"];
+      document.getElementById("editWater").value = rec["水系"];
+      document.getElementById("editName").value = rec["案件名稱"];
+      document.getElementById("editApproved").value = rec["核定經費_千元"];
+      document.getElementById("editUsable").value = rec["可支用經費_千元"];
+      document.getElementById("editCode").value = rec["工程編號"];
+      document.getElementById("editCoords").value = rec["座標點位"];
+      document.getElementById("editRemark").value = rec["備註資訊"];
+      document.getElementById("modalEdit").classList.remove("hidden");
+    }
+
+    async function saveEditedProject() {
+      const id = document.getElementById("editId").value;
+      const orig = allRecords.find(r => r.id === id) || {};
+      const updated = {
+        ...orig,
+        id,
+        "年度": document.getElementById("editYear").value.trim(),
+        "分署": document.getElementById("editBranch").value.trim().replace("水規所", "水規分署"),
+        "縣市": document.getElementById("editCounty").value.trim().replace(/台/g, "臺"),
+        "水系": document.getElementById("editWater").value.trim(),
+        "案件名稱": document.getElementById("editName").value.trim(),
+        "核定經費_千元": parseFloat(document.getElementById("editApproved").value) || 0,
+        "可支用經費_千元": parseFloat(document.getElementById("editUsable").value) || 0,
+        "工程編號": document.getElementById("editCode").value.trim(),
+        "座標點位": document.getElementById("editCoords").value.trim(),
+        "備註資訊": document.getElementById("editRemark").value.trim()
+      };
+
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "update_project", passcode: adminPasscode, record: updated })
+        });
+        const json = await res.json();
+        if (json.status === "success") {
+          document.getElementById("modalEdit").classList.add("hidden");
+          alert("已成功更新至 Google 試算表！");
+          loadAllData(false);
+        } else {
+          alert(json.message);
+        }
+      } catch (err) {
+        alert("更新失敗：" + err.message);
+      }
+    }
+
+    // 前端 Excel 解析與批次防重複匯入
+    function triggerExcelInput() {
+      document.getElementById("fileExcelInput").click();
+    }
+
+    function handleExcelFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const yearMatch = file.name.match(/(1\d{2})/);
+      const defaultYear = yearMatch ? yearMatch[1] : String(new Date().getFullYear() - 1911);
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+        const parsed = [];
+
+        wb.SheetNames.forEach(sheetName => {
+          if (sheetName.includes("總表") || sheetName.includes("目錄")) return;
+          let cat = "工程";
+          if (sheetName.includes("委託") || sheetName.includes("設計")) cat = "委託設計/監造";
+          else if (sheetName.includes("先期")) cat = "用地先期作業";
+          else if (sheetName.includes("用地") || sheetName.includes("土地")) cat = "用地取得";
+          else if (sheetName.includes("橋梁")) cat = "橋梁改建/補助";
+          else if (sheetName.includes("逕流")) cat = "逕流分擔/補助";
+
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: "" });
+          rows.forEach(row => {
+            const pName = String(row["案件名稱"] || row["工程名稱"] || "").trim();
+            const bName = String(row["分署"] || row["執行單位"] || "").trim().replace("水規所", "水規分署");
+            if (!pName || !bName || pName.includes("合計") || pName.includes("小計")) return;
+
+            parsed.push({
+              "年度": String(row["年度"] || defaultYear).trim(),
+              "類別": String(row["類別"] || cat).trim(),
+              "附表": String(row["附表"] || sheetName).trim(),
+              "分署": bName,
+              "縣市": String(row["縣市"] || "").trim().replace(/台/g, "臺"),
+              "水系": String(row["水系"] || "").trim(),
+              "案件名稱": pName,
+              "核定經費_千元": parseFloat(row["核定經費_千元"] || row["核定經費(千元)"] || row["核定經費"] || 0) || 0,
+              "可支用經費_千元": parseFloat(row["可支用經費_千元"] || row["可支用經費(千元)"] || row["可支用經費"] || 0) || 0,
+              "工程編號": String(row["工程編號"] || "").trim(),
+              "座標點位": String(row["座標點位"] || "").trim(),
+              "堤防_m": parseFloat(row["堤防_m"] || 0) || 0,
+              "護岸_m": parseFloat(row["護岸_m"] || 0) || 0,
+              "水門_座": parseInt(row["水門_座"] || 0, 10) || 0,
+              "水防道路_m2": parseFloat(row["水防道路_m2"] || 0) || 0,
+              "其他結構說明": String(row["其他結構說明"] || "").trim(),
+              "備註資訊": String(row["備註資訊"] || row["備註"] || "").trim()
+            });
+          });
+        });
+
+        pendingImportRecords = parsed;
+        document.getElementById("lblImportSummary").textContent = `檔案《${file.name}》共解析出 ${parsed.length} 筆有效案件（寫入時將自動依「年度＋分署＋工程編號／案件名稱」執行防重複合併）：`;
+        document.getElementById("tbodyImportPreview").innerHTML = parsed.slice(0, 100).map(r => `
+          <tr>
+            <td class="p-1.5 text-center">${r["年度"]}</td>
+            <td class="p-1.5 text-center">${r["分署"]}</td>
+            <td class="p-1.5 text-center">${r["類別"]}</td>
+            <td class="p-1.5">${r["案件名稱"]}</td>
+            <td class="p-1.5 text-right font-mono">${r["核定經費_千元"].toLocaleString()}</td>
+            <td class="p-1.5 text-center">${r["工程編號"] || "-"}</td>
+          </tr>
+        `).join("");
+        document.getElementById("modalImportPreview").classList.remove("hidden");
+        event.target.value = "";
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function confirmUploadImportRecords() {
+      if (!pendingImportRecords.length) return;
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "upsert_batch", passcode: adminPasscode, records: pendingImportRecords })
+        });
+        const json = await res.json();
+        if (json.status === "success") {
+          document.getElementById("modalImportPreview").classList.add("hidden");
+          alert(json.message);
+          loadAllData(false);
+        } else {
+          alert(json.message);
+        }
+      } catch (err) {
+        alert("雲端寫入失敗：" + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
