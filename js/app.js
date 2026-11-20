@@ -51,6 +51,19 @@ function closeTopMenu() {
   if (dd) dd.classList.add("hidden");
 }
 
+function toggleKpiSection() {
+  const sec = $("kpiSection");
+  const lbl = $("menuToggleKpiLabel");
+  if (!sec) return;
+  const isHidden = sec.classList.toggle("hidden");
+  if (lbl) {
+    lbl.textContent = isHidden ? "顯示統計卡片" : "隱藏統計卡片";
+  }
+  if (typeof renderActiveCharts === "function") {
+    setTimeout(() => renderActiveCharts(), 30);
+  }
+}
+
 function toggleCategoryDropdown(e) {
   if (e) e.stopPropagation();
   const panel = $("categoryDropdownPanel");
@@ -312,6 +325,10 @@ function updateKpiCards() {
   if ($("kpiCountySub")) $("kpiCountySub").innerHTML = topLines.join("<br>");
 }
 
+function formatIntThousand(val) {
+  return Math.round(Number(val) || 0).toLocaleString();
+}
+
 function renderDetailTable() {
   const isAdmin = Boolean(adminPasscode);
   const thAct = $("thActionCol");
@@ -329,22 +346,29 @@ function renderDetailTable() {
   tbody.innerHTML = filteredRecords.map((r, idx) => {
     const bg = idx % 2 === 0 ? "bg-slate-50/70" : "bg-white";
     const editBtn = isAdmin
-      ? `<td class="p-2 text-center"><button onclick='openEditModal(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-0.5 rounded text-[11px]">編輯</button></td>`
+      ? `<td class="p-2 text-center">
+           <button onclick='openEditModal(${JSON.stringify(r).replace(/'/g, "&#39;")})' title="編輯" aria-label="編輯" class="inline-flex items-center justify-center p-1 rounded text-blue-700 hover:bg-blue-100 transition">
+             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+             </svg>
+           </button>
+         </td>`
       : "";
     return `
       <tr class="${bg} hover:bg-sky-50">
         <td class="p-2 text-center">${r["年度"]}</td>
         <td class="p-2 text-center">${r["類別"]}</td>
-        <td class="p-2 text-center">${r["附表"] || "-"}</td>
         <td class="p-2 text-center font-medium">${r["分署"] || "-"}</td>
         <td class="p-2 text-center">${r["縣市"] || "-"}</td>
         <td class="p-2 text-center">${r["水系"] || "-"}</td>
         <td class="p-2 font-medium text-slate-800">${r["案件名稱"]}</td>
-        <td class="p-2 text-right font-mono">${r["核定經費_千元"].toLocaleString(undefined, { minimumFractionDigits: 3 })}</td>
-        <td class="p-2 text-right font-mono">${r["可支用經費_千元"].toLocaleString(undefined, { minimumFractionDigits: 3 })}</td>
+        <td class="p-2 text-right">${formatIntThousand(r["核定經費_千元"])}</td>
+        <td class="p-2 text-right">${formatIntThousand(r["可支用經費_千元"])}</td>
         <td class="p-2 text-center">${r["工程編號"] || "-"}</td>
         <td class="p-2 text-center">${r["座標點位"] || "-"}</td>
         <td class="p-2 text-slate-600 max-w-[240px] truncate" title="${r["備註資訊"] || ""}">${r["備註資訊"] || "-"}</td>
+        <td class="p-2 text-center">${r["附表"] || "-"}</td>
         ${editBtn}
       </tr>
     `;
