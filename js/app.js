@@ -338,25 +338,26 @@ function escapeHtmlAttr(str) {
     .replace(/>/g, "&gt;");
 }
 
-function renderCollapsibleCell(rawVal, maxWidthClass, thresholdLen) {
+function renderCollapsibleCell(rawVal, thresholdLen, alignCenter = false) {
   const text = String(rawVal || "").trim();
+  const alignCls = alignCenter ? "text-center" : "text-left";
   if (!text || text === "-") {
-    return `<div class="${maxWidthClass} text-center text-slate-400">-</div>`;
+    return `<div class="w-full text-center text-slate-400">-</div>`;
   }
   const safeText = escapeHtmlAttr(text);
   const isLong = text.length > thresholdLen;
   if (!isLong) {
-    return `<div class="${maxWidthClass} truncate text-slate-600" title="${safeText}">${safeText}</div>`;
+    return `<div class="w-full truncate ${alignCls}" title="${safeText}">${safeText}</div>`;
   }
   return `
-    <div class="relative group ${maxWidthClass} flex items-center gap-1">
-      <div class="cell-preview truncate flex-1 text-slate-600" title="${safeText}">${safeText}</div>
+    <div class="relative group w-full flex items-center gap-0.5">
+      <div class="cell-preview truncate flex-1 ${alignCls}" title="${safeText}">${safeText}</div>
       <button type="button" onclick="toggleCellExpand(this)" title="展開/收合全文" aria-label="展開或收合全文" class="shrink-0 p-0.5 rounded text-slate-400 hover:text-blue-700 hover:bg-slate-200/70 transition">
         <svg class="w-3.5 h-3.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <div class="hidden group-hover:block absolute left-0 bottom-full mb-1.5 z-40 w-72 max-w-[85vw] p-2.5 rounded-md bg-slate-800 text-white text-xs leading-relaxed shadow-lg whitespace-normal break-words pointer-events-none">
+      <div class="hidden group-hover:block absolute left-0 bottom-full mb-1.5 z-40 w-64 max-w-[85vw] p-2.5 rounded-md bg-slate-800 text-white text-xs leading-relaxed shadow-lg whitespace-normal break-words pointer-events-none text-left">
         ${safeText}
       </div>
     </div>
@@ -382,7 +383,9 @@ function toggleCellExpand(btn) {
 function renderDetailTable() {
   const isAdmin = Boolean(adminPasscode);
   const thAct = $("thActionCol");
+  const colAct = $("colActionWidth");
   if (thAct) thAct.classList.toggle("hidden", !isAdmin);
+  if (colAct) colAct.style.width = isAdmin ? "52px" : "0px";
 
   const sumEl = $("lblDetailSummary");
   if (sumEl) {
@@ -408,17 +411,17 @@ function renderDetailTable() {
     return `
       <tr class="${bg} hover:bg-sky-50">
         <td class="p-2 text-center whitespace-nowrap">${r["年度"]}</td>
-        <td class="p-2 text-center whitespace-nowrap">${r["類別"]}</td>
+        <td class="p-2">${renderCollapsibleCell(r["類別"], 4, true)}</td>
         <td class="p-2 text-center font-medium whitespace-nowrap">${r["分署"] || "-"}</td>
-        <td class="p-2 text-center whitespace-nowrap">${r["縣市"] || "-"}</td>
-        <td class="p-2 text-center whitespace-nowrap">${r["水系"] || "-"}</td>
-        <td class="p-2 font-medium text-slate-800">${r["案件名稱"]}</td>
+        <td class="p-2">${renderCollapsibleCell(r["縣市"], 3, true)}</td>
+        <td class="p-2">${renderCollapsibleCell(r["水系"], 3, true)}</td>
+        <td class="p-2 font-medium text-slate-800 break-words">${r["案件名稱"]}</td>
         <td class="p-2 text-right whitespace-nowrap">${formatIntThousand(r["核定經費_千元"])}</td>
         <td class="p-2 text-right whitespace-nowrap">${formatIntThousand(r["可支用經費_千元"])}</td>
         <td class="p-2 text-center whitespace-nowrap">${r["工程編號"] || "-"}</td>
-        <td class="p-2">${renderCollapsibleCell(r["座標點位"], "max-w-[105px]", 10)}</td>
-        <td class="p-2">${renderCollapsibleCell(r["備註資訊"], "max-w-[160px]", 12)}</td>
-        <td class="p-2 text-center whitespace-nowrap">${r["附表"] || "-"}</td>
+        <td class="p-2 text-slate-600">${renderCollapsibleCell(r["座標點位"], 9, true)}</td>
+        <td class="p-2 text-slate-600">${renderCollapsibleCell(r["備註資訊"], 11, false)}</td>
+        <td class="p-2">${renderCollapsibleCell(r["附表"], 6, true)}</td>
         ${editBtn}
       </tr>
     `;
