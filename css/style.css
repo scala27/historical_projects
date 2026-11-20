@@ -1,0 +1,56 @@
+body {
+  font-family: "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f1f5f9;
+  color: #1e293b;
+  overflow-x: hidden;
+}
+
+.table-container {
+  max-height: 560px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background-color: #1f538d;
+  color: #ffffff;
+  z-index: 10;
+  user-select: none;
+}
+
+thead th:hover {
+  background-color: #14375e;
+}
+
+/* 極簡純線條圖示懸浮提示語 */
+.icon-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-tip .tip-text {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background-color: #0f172a;
+  color: #f8fafc;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 4px 9px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 50;
+}
+
+.icon-tip:hover .tip-text {
+  visibility: visible;
+  opacity: 1;
+}
