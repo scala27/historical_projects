@@ -5,6 +5,23 @@ let adminPasscode = "";
 let selectedCountyForChart = "【全臺合計】";
 let pendingImportRecords = [];
 let detailSortAsc = {};
+let isResizingCol = false;
+
+const COL_WIDTH_STORAGE_KEY = "flood_projects_detail_col_widths_v1";
+const DEFAULT_DETAIL_COL_WIDTHS = {
+  year: 48,
+  category: 78,
+  branch: 50,
+  county: 76,
+  water: 84,
+  name: 310,
+  approved: 90,
+  usable: 90,
+  code: 156,
+  coords: 86,
+  remark: 140,
+  appendix: 86
+};
 
 function $(id) {
   return document.getElementById(id);
@@ -15,6 +32,12 @@ window.addEventListener("DOMContentLoaded", () => {
     initCategoryCheckboxes();
   } catch (err) {
     console.error("initCategoryCheckboxes 錯誤:", err);
+  }
+
+  try {
+    initDetailColumnResizer();
+  } catch (err) {
+    console.error("initDetailColumnResizer 錯誤:", err);
   }
 
   try {
@@ -39,6 +62,158 @@ window.addEventListener("DOMContentLoaded", () => {
 
   loadAllData(false);
 });
+
+function getSavedDetailColWidths() {
+  try {
+    const raw = localStorage.getItem(COL_WIDTH_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_DETAIL_COL_WIDTHS };
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_DETAIL_COL_WIDTHS, ...parsed };
+  } catch (e) {
+    return { ...DEFAULT_DETAIL_COL_WIDTHS };
+  }
+}
+
+function saveDetailColWidths(widths) {
+  try {
+    localStorage.setItem(COL_WIDTH_STORAGE_KEY, JSON.stringify(widths));
+  } catch (e) {
+    console.warn("無法儲存欄寬設定:", e);
+  }
+}
+
+function applyDetailColumnWidths(widths) {
+  const cg = $("detailColGroup");
+  if (!cg) return;
+  Object.keys(DEFAULT_DETAIL_COL_WIDTHS).forEach(key => {
+    const col = cg.querySelector(`col[data-col-key="${key}"]`);
+    if (col && widths[key]) {
+      col.style.width = `${Math.max(40, Math.round(widths[key]))}px`;
+    }
+  });
+}
+
+function resetDetailColumnWidths() {
+  try {
+    localStorage.removeItem(COL_WIDTH_STORAGE_KEY);
+  } catch (e) {}
+  applyDetailColumnWidths(DEFAULT_DETAIL_COL_WIDTHS);
+}
+
+function autoFitDetailColumn(colKey) {
+  const tbl = $("tblDetail");
+  const cg = $("detailColGroup");
+  if (!tbl || !cg) return;
+  const col = cg.querySelector(`col[data-col-key="${colKey}"]`);
+  const ths = Array.from(tbl.querySelectorAll("thead th"));
+  const colIdx = ths.findIndex(th => th.getAttribute("data-col-key") === colKey);
+  if (!col || colIdx < 0) return;
+
+  const measure = document.createElement("span");
+  measure.style.position = "fixed";
+  measure.style.visibility = "hidden";
+  measure.style.whiteSpace = "nowrap";
+  measure.style.fontSize = "12px";
+  measure.style.fontWeight = "600";
+  measure.textContent = ths[colIdx].textContent.trim();
+  document.body.appendChild(measure);
+  let maxW = measure.offsetWidth + 22;
+
+  measure.style.fontWeight = "400";
+  const rows = Array.from(tbl.querySelectorAll("tbody tr")).slice(0, 150);
+  rows.forEach(tr => {
+    const td = tr.children[colIdx];
+    if (!td) return;
+    const preview = td.querySelector(".cell-preview");
+    const txt = (preview ? preview.textContent : td.textContent).trim();
+    if (!txt || txt === "-") return;
+    measure.textContent = txt;
+    const w = measure.offsetWidth + (preview ? 34 : 18);
+    if (w > maxW) maxW = w;
+  });
+  document.body.removeChild(measure);
+
+  const finalW = Math.min(520, Math.max(44, maxW));
+  col.style.width = `${finalW}px`;
+  const widths = getSavedDetailColWidths();
+  widths[colKey] = finalW;
+  saveDetailColWidths(widths);
+}
+
+function initDetailColumnResizer() {
+  const saved = getSavedDetailColWidths();
+  applyDetailColumnWidths(saved);
+
+  const resizers = document.querySelectorAll("#tblDetail .col-resizer");
+  resizers.forEach(handle => {
+    handle.style.position = "absolute";
+    handle.style.right = "0";
+    handle.style.top = "0";
+    handle.style.bottom = "0";
+    handle.style.width = "7px";
+    handle.style.cursor = "col-resize";
+    handle.style.zIndex = "30";
+    handle.style.borderRight = "1px solid rgba(255,255,255,0.22)";
+
+    handle.addEventListener("mouseenter", () => {
+      handle.style.backgroundColor = "rgba(255,255,255,0.28)";
+    });
+    handle.addEventListener("mouseleave", () => {
+      if (!isResizingCol) handle.style.backgroundColor = "transparent";
+    });
+
+    handle.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
+    handle.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      const key = handle.getAttribute("data-col-key");
+      if (key) autoFitDetailColumn(key);
+    });
+
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = handle.getAttribute("data-col-key");
+      const cg = $("detailColGroup");
+      const col = cg ? cg.querySelector(`col[data-col-key="${key}"]`) : null;
+      if (!col) return;
+
+      isResizingCol = true;
+      const startX = e.pageX;
+      const startW = col.getBoundingClientRect().width || parseInt(col.style.width, 10) || 80;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+
+      const onMouseMove = (moveEvt) => {
+        const delta = moveEvt.pageX - startX;
+        const newW = Math.max(40, Math.round(startW + delta));
+        col.style.width = `${newW}px`;
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        handle.style.backgroundColor = "transparent";
+
+        const finalW = Math.max(40, Math.round(parseInt(col.style.width, 10) || startW));
+        const widths = getSavedDetailColWidths();
+        widths[key] = finalW;
+        saveDetailColWidths(widths);
+
+        setTimeout(() => {
+          isResizingCol = false;
+        }, 50);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    });
+  });
+}
 
 function toggleTopMenu(e) {
   if (e) e.stopPropagation();
@@ -385,7 +560,7 @@ function renderDetailTable() {
   const thAct = $("thActionCol");
   const colAct = $("colActionWidth");
   if (thAct) thAct.classList.toggle("hidden", !isAdmin);
-  if (colAct) colAct.className = isAdmin ? "w-[44px]" : "w-0";
+  if (colAct) colAct.style.width = isAdmin ? "44px" : "0px";
 
   const sumEl = $("lblDetailSummary");
   if (sumEl) {
@@ -429,6 +604,7 @@ function renderDetailTable() {
 }
 
 function sortDetailTable(field) {
+  if (isResizingCol) return;
   detailSortAsc[field] = !detailSortAsc[field];
   const asc = detailSortAsc[field];
   filteredRecords.sort((a, b) => {
