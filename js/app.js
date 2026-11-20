@@ -353,7 +353,7 @@ function renderCollapsibleCell(rawVal, thresholdLen, alignCenter = false) {
     <div class="relative group w-full flex items-center gap-0.5">
       <div class="cell-preview truncate flex-1 ${alignCls}" title="${safeText}">${safeText}</div>
       <button type="button" onclick="toggleCellExpand(this)" title="展開/收合全文" aria-label="展開或收合全文" class="shrink-0 p-0.5 rounded text-slate-400 hover:text-blue-700 hover:bg-slate-200/70 transition">
-        <svg class="w-3.5 h-3.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="w-3 h-3 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
@@ -385,7 +385,7 @@ function renderDetailTable() {
   const thAct = $("thActionCol");
   const colAct = $("colActionWidth");
   if (thAct) thAct.classList.toggle("hidden", !isAdmin);
-  if (colAct) colAct.style.width = isAdmin ? "52px" : "0px";
+  if (colAct) colAct.className = isAdmin ? "w-[44px]" : "w-0";
 
   const sumEl = $("lblDetailSummary");
   if (sumEl) {
@@ -399,7 +399,7 @@ function renderDetailTable() {
   tbody.innerHTML = filteredRecords.map((r, idx) => {
     const bg = idx % 2 === 0 ? "bg-slate-50/70" : "bg-white";
     const editBtn = isAdmin
-      ? `<td class="p-2 text-center">
+      ? `<td class="px-1.5 py-1.5 text-center">
            <button onclick='openEditModal(${JSON.stringify(r).replace(/'/g, "&#39;")})' title="編輯" aria-label="編輯" class="inline-flex items-center justify-center p-1 rounded text-blue-700 hover:bg-blue-100 transition">
              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -410,18 +410,18 @@ function renderDetailTable() {
       : "";
     return `
       <tr class="${bg} hover:bg-sky-50">
-        <td class="p-2 text-center whitespace-nowrap">${r["年度"]}</td>
-        <td class="p-2">${renderCollapsibleCell(r["類別"], 4, true)}</td>
-        <td class="p-2 text-center font-medium whitespace-nowrap">${r["分署"] || "-"}</td>
-        <td class="p-2">${renderCollapsibleCell(r["縣市"], 3, true)}</td>
-        <td class="p-2">${renderCollapsibleCell(r["水系"], 3, true)}</td>
-        <td class="p-2 font-medium text-slate-800 break-words">${r["案件名稱"]}</td>
-        <td class="p-2 text-right whitespace-nowrap">${formatIntThousand(r["核定經費_千元"])}</td>
-        <td class="p-2 text-right whitespace-nowrap">${formatIntThousand(r["可支用經費_千元"])}</td>
-        <td class="p-2 text-center whitespace-nowrap">${r["工程編號"] || "-"}</td>
-        <td class="p-2 text-slate-600">${renderCollapsibleCell(r["座標點位"], 9, true)}</td>
-        <td class="p-2 text-slate-600">${renderCollapsibleCell(r["備註資訊"], 11, false)}</td>
-        <td class="p-2">${renderCollapsibleCell(r["附表"], 6, true)}</td>
+        <td class="px-1.5 py-1.5 text-center whitespace-nowrap">${r["年度"]}</td>
+        <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["類別"], 4, true)}</td>
+        <td class="px-1.5 py-1.5 text-center font-medium whitespace-nowrap">${r["分署"] || "-"}</td>
+        <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["縣市"], 3, true)}</td>
+        <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["水系"], 4, true)}</td>
+        <td class="px-2 py-1.5 font-medium text-slate-800 truncate" title="${escapeHtmlAttr(r["案件名稱"])}">${r["案件名稱"]}</td>
+        <td class="px-1.5 py-1.5 text-right whitespace-nowrap">${formatIntThousand(r["核定經費_千元"])}</td>
+        <td class="px-1.5 py-1.5 text-right whitespace-nowrap">${formatIntThousand(r["可支用經費_千元"])}</td>
+        <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["工程編號"], 18, true)}</td>
+        <td class="px-1.5 py-1.5 text-slate-600">${renderCollapsibleCell(r["座標點位"], 8, true)}</td>
+        <td class="px-1.5 py-1.5 text-slate-600">${renderCollapsibleCell(r["備註資訊"], 12, false)}</td>
+        <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["附表"], 6, true)}</td>
         ${editBtn}
       </tr>
     `;
