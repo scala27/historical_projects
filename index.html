@@ -121,60 +121,6 @@
 
   <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 py-3 space-y-3">
 
-    <!-- 單列整合查詢條件控制列 -->
-    <section class="bg-white rounded-lg shadow-sm border border-slate-200 p-3 flex flex-wrap items-center gap-3">
-      <div class="flex items-center gap-1.5">
-        <label class="text-sm font-bold text-slate-700">年度：</label>
-        <select id="selYearStart" onchange="onYearChange()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
-        <span class="text-sm text-slate-600">至</span>
-        <select id="selYearEnd" onchange="onYearChange()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
-        <span class="text-sm text-slate-600">年</span>
-      </div>
-
-      <div class="flex items-center gap-1.5">
-        <label class="text-sm font-bold text-slate-700">篩選：</label>
-        <select id="selDimension" onchange="onDimensionChange()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white">
-          <option value="branch">按分署統計</option>
-          <option value="county">按縣市統計</option>
-        </select>
-      </div>
-
-      <div class="flex items-center gap-1.5">
-        <label id="lblTarget" class="text-sm font-bold text-slate-700">分署別：</label>
-        <select id="selTarget" onchange="applyFilters()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
-      </div>
-
-      <div class="flex items-center gap-1.5">
-        <label id="lblSubFilter" class="text-sm font-bold text-slate-700">縣市別：</label>
-        <select id="selSubFilter" onchange="applyFilters()" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white"></select>
-      </div>
-
-      <!-- 類別複選下拉式視窗 -->
-      <div class="flex items-center gap-1.5 relative" id="categoryDropdownWrapper">
-        <label class="text-sm font-bold text-slate-700">類別：</label>
-        <button type="button" onclick="toggleCategoryDropdown(event)" class="border border-slate-300 rounded px-2.5 py-1 text-sm bg-white hover:bg-slate-50 flex items-center justify-between gap-2 min-w-[148px]">
-          <span id="lblCategorySummary" class="truncate text-slate-800">全部類別 (8)</span>
-          <svg class="w-3.5 h-3.5 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
-
-        <div id="categoryDropdownPanel" class="hidden absolute left-0 top-full mt-1 w-56 bg-white border border-slate-300 rounded-md shadow-lg p-2 z-40 text-sm space-y-1">
-          <label class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-slate-100 font-bold text-slate-800 cursor-pointer border-b border-slate-100 pb-1.5">
-            <input type="checkbox" id="chkAll" checked onchange="toggleAllCategories(this.checked)" class="rounded text-blue-700" />
-            <span>全選</span>
-          </label>
-          <div id="categoryCheckboxes" class="max-h-60 overflow-y-auto space-y-0.5 pt-0.5"></div>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-1.5 flex-1 min-w-[210px]">
-        <label class="text-sm font-bold text-slate-700">關鍵字：</label>
-        <input id="txtKeyword" type="text" onkeyup="if(event.key==='Enter') applyFilters()" placeholder="搜尋案件名稱 / 水系 / 工程編號" class="border border-slate-300 rounded px-2.5 py-1 text-sm w-full max-w-[240px]" />
-        <button onclick="applyFilters()" class="bg-[#1f538d] hover:bg-[#14375e] text-white text-sm font-bold px-3.5 py-1 rounded transition shrink-0">查詢</button>
-      </div>
-    </section>
-
     <!-- 5 張 KPI 統計卡片（可由右上角選單切換顯示/隱藏） -->
     <section id="kpiSection" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
       <div class="bg-[#e3f2fd] border border-blue-200 rounded-lg p-3">
@@ -208,13 +154,70 @@
       </div>
     </section>
 
-    <!-- 主內容頁籤容器 -->
+    <!-- 主內容頁籤與查詢條件整合容器 -->
     <section class="bg-white rounded-lg shadow-sm border border-slate-200 p-3">
-      <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2.5 mb-3">
-        <button id="tabBtnDetail" onclick="switchTab('detail')" class="px-4 py-1.5 rounded text-sm font-bold bg-[#1f538d] text-white transition">案件明細</button>
-        <button id="tabBtnCounty" onclick="switchTab('county')" class="px-4 py-1.5 rounded text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">各縣市經費分配比較表</button>
-        <button id="tabBtnTrend" onclick="switchTab('trend')" class="px-4 py-1.5 rounded text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">年度趨勢圖</button>
-        <button id="tabBtnBranch" onclick="switchTab('branch')" class="px-4 py-1.5 rounded text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">各分署經費比較圖</button>
+      <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-200 pb-2.5 mb-3">
+        <!-- 左側：4 個精簡頁籤 -->
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button id="tabBtnDetail" onclick="switchTab('detail')" class="px-3.5 py-1.5 rounded text-sm font-bold bg-[#1f538d] text-white transition">案件明細</button>
+          <button id="tabBtnCounty" onclick="switchTab('county')" class="px-3.5 py-1.5 rounded text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">縣市經費</button>
+          <button id="tabBtnTrend" onclick="switchTab('trend')" class="px-3.5 py-1.5 rounded text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">趨勢圖表</button>
+          <button id="tabBtnBranch" onclick="switchTab('branch')" class="px-3.5 py-1.5 rounded text-sm font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">分署經費</button>
+        </div>
+
+        <!-- 右側：查詢條件控制項 -->
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <div class="flex items-center gap-1">
+            <label class="font-bold text-slate-700">年度：</label>
+            <select id="selYearStart" onchange="onYearChange()" class="border border-slate-300 rounded px-1.5 py-1 bg-white"></select>
+            <span class="text-slate-600">至</span>
+            <select id="selYearEnd" onchange="onYearChange()" class="border border-slate-300 rounded px-1.5 py-1 bg-white"></select>
+            <span class="text-slate-600">年</span>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <label class="font-bold text-slate-700">篩選：</label>
+            <select id="selDimension" onchange="onDimensionChange()" class="border border-slate-300 rounded px-1.5 py-1 bg-white">
+              <option value="branch">按分署統計</option>
+              <option value="county">按縣市統計</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <label id="lblTarget" class="font-bold text-slate-700">分署別：</label>
+            <select id="selTarget" onchange="applyFilters()" class="border border-slate-300 rounded px-1.5 py-1 bg-white"></select>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <label id="lblSubFilter" class="font-bold text-slate-700">縣市別：</label>
+            <select id="selSubFilter" onchange="applyFilters()" class="border border-slate-300 rounded px-1.5 py-1 bg-white"></select>
+          </div>
+
+          <!-- 類別複選下拉式視窗 -->
+          <div class="flex items-center gap-1 relative" id="categoryDropdownWrapper">
+            <label class="font-bold text-slate-700">類別：</label>
+            <button type="button" onclick="toggleCategoryDropdown(event)" class="border border-slate-300 rounded px-2 py-1 bg-white hover:bg-slate-50 flex items-center justify-between gap-1.5 min-w-[125px]">
+              <span id="lblCategorySummary" class="truncate text-slate-800">全部類別 (8)</span>
+              <svg class="w-3 h-3 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+
+            <div id="categoryDropdownPanel" class="hidden absolute right-0 top-full mt-1 w-52 bg-white border border-slate-300 rounded-md shadow-lg p-2 z-40 text-xs space-y-1">
+              <label class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-slate-100 font-bold text-slate-800 cursor-pointer border-b border-slate-100 pb-1.5">
+                <input type="checkbox" id="chkAll" checked onchange="toggleAllCategories(this.checked)" class="rounded text-blue-700" />
+                <span>全選</span>
+              </label>
+              <div id="categoryCheckboxes" class="max-h-60 overflow-y-auto space-y-0.5 pt-0.5"></div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <label class="font-bold text-slate-700">關鍵字：</label>
+            <input id="txtKeyword" type="text" onkeyup="if(event.key==='Enter') applyFilters()" placeholder="名稱 / 水系 / 編號" class="border border-slate-300 rounded px-2 py-1 w-36 sm:w-44" />
+            <button onclick="applyFilters()" class="bg-[#1f538d] hover:bg-[#14375e] text-white font-bold px-3 py-1 rounded transition shrink-0">查詢</button>
+          </div>
+        </div>
       </div>
 
       <!-- 頁籤 1：案件明細 -->
@@ -244,7 +247,7 @@
         </div>
       </div>
 
-      <!-- 頁籤 2：各縣市經費分配比較表 -->
+      <!-- 頁籤 2：縣市經費 -->
       <div id="viewCounty" class="hidden">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div class="lg:col-span-4 border border-slate-200 rounded-lg p-2.5 bg-white">
@@ -280,7 +283,7 @@
         </div>
       </div>
 
-      <!-- 頁籤 3：年度趨勢圖 -->
+      <!-- 頁籤 3：趨勢圖表 -->
       <div id="viewTrend" class="hidden">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
           <span class="text-xs text-slate-600">簡報出圖工具：點擊右側按鈕可直接複製高解析度圖表至剪貼簿（於 PowerPoint 按 Ctrl+V 即可貼上）</span>
@@ -292,7 +295,7 @@
         <div id="chartTrend" class="w-full h-[500px] bg-white rounded border border-slate-200"></div>
       </div>
 
-      <!-- 頁籤 4：各分署經費比較圖 -->
+      <!-- 頁籤 4：分署經費 -->
       <div id="viewBranch" class="hidden">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
           <span class="text-xs text-slate-600">簡報出圖工具：點擊右側按鈕可直接複製高解析度圖表至剪貼簿（於 PowerPoint 按 Ctrl+V 即可貼上）</span>
