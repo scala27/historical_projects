@@ -508,9 +508,16 @@ function updateKpiCards() {
   const sub = deduplicatedRecords.filter(r => getMajorCategory(r["類別"]) === "補助類");
   const subB = sub.filter(r => r["類別"] === "橋梁改建/補助");
   const subR = sub.filter(r => r["類別"] === "逕流分擔/補助");
+  const subO = sub.filter(r => r["類別"] !== "橋梁改建/補助" && r["類別"] !== "逕流分擔/補助");
   if ($("kpiSubCnt")) $("kpiSubCnt").textContent = `案件數: ${sub.length.toLocaleString()} 筆`;
   if ($("kpiSubAmt")) $("kpiSubAmt").textContent = `核定經費: ${sumAmt(sub).toFixed(2)} 億元`;
-  if ($("kpiSubSub")) $("kpiSubSub").innerHTML = `├─ 橋梁改建/補助: ${subB.length} 筆 / ${sumAmt(subB).toFixed(2)} 億元<br>└─ 逕流分擔/補助: ${subR.length} 筆 / ${sumAmt(subR).toFixed(2)} 億元`;
+  if ($("kpiSubSub")) {
+    $("kpiSubSub").innerHTML = [
+      `├─ 橋梁改建/補助: ${subB.length} 筆 / ${sumAmt(subB).toFixed(2)} 億元`,
+      `├─ 逕流分擔/補助: ${subR.length} 筆 / ${sumAmt(subR).toFixed(2)} 億元`,
+      `└─ 補助案件/其他: ${subO.length} 筆 / ${sumAmt(subO).toFixed(2)} 億元`
+    ].join("<br>");
+  }
 
   const cMapAmt = {}, cMapCnt = {};
   deduplicatedRecords.forEach(r => {
