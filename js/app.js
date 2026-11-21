@@ -454,6 +454,7 @@ function applyFilters() {
   updateKpiCards();
   renderDetailTable();
   if (typeof renderCountyTable === "function") renderCountyTable();
+  if (typeof renderBranchTable === "function") renderBranchTable();
   if (typeof renderActiveCharts === "function") renderActiveCharts();
 }
 
