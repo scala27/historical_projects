@@ -1,6 +1,7 @@
 let chartCountyTrend = null;
 let chartTrend = null;
 let chartBranch = null;
+let selectedBranchForChart = "【全部分署】";
 
 function initCharts() {
   chartCountyTrend = echarts.init(document.getElementById("chartCountyTrend"));
@@ -21,6 +22,36 @@ function getCountyTableAxisList() {
     list.push("全國性或未分配");
   }
   return list;
+}
+
+function formatBranchDisplayName(rawBranch) {
+  const b = String(rawBranch || "").trim();
+  if (!b) return "未分類";
+  if (b.includes("水規")) return "水規分署";
+  return b.length === 1 ? `${b}分署` : b;
+}
+
+function getSortedBranchEntries() {
+  const mapAmt = {}, mapCnt = {};
+  deduplicatedRecords.forEach(r => {
+    const key = formatBranchDisplayName(r["分署"]);
+    mapAmt[key] = (mapAmt[key] || 0) + r["核定經費_千元"];
+    mapCnt[key] = (mapCnt[key] || 0) + 1;
+  });
+
+  const keys = Object.keys(mapAmt).sort((a, b) => {
+    const rawA = a.replace("分署", "");
+    const rawB = b.replace("分署", "");
+    const oa = CHINESE_NUM_ORDER[a] || CHINESE_NUM_ORDER[rawA] || 99;
+    const ob = CHINESE_NUM_ORDER[b] || CHINESE_NUM_ORDER[rawB] || 99;
+    return oa - ob;
+  });
+
+  return keys.map(k => ({
+    name: k,
+    count: mapCnt[k] || 0,
+    amountYi: (mapAmt[k] || 0) / 100000
+  }));
 }
 
 function renderCountyTable() {
@@ -76,6 +107,90 @@ function renderCountyTable() {
   document.getElementById("tbodyCounty").innerHTML = rows.join("");
 }
 
+function renderBranchTable() {
+  const tbody = document.getElementById("tbodyBranch");
+  if (!tbody) return;
+
+  const entries = getSortedBranchEntries();
+  let totCnt = 0;
+  let totAmt = 0;
+
+  const rows = entries.map((item, idx) => {
+    totCnt += item.count;
+    totAmt += item.amountYi;
+    const selectedClass = selectedBranchForChart === item.name
+      ? "bg-sky-100 font-bold"
+      : (idx % 2 === 0 ? "bg-slate-50" : "bg-white");
+    return `
+      <tr onclick="selectBranchForTrend('${item.name}')" class="${selectedClass} hover:bg-sky-50 cursor-pointer">
+        <td class="p-2 text-center">${String(idx + 1).padStart(2, "0")}</td>
+        <td class="p-2 text-center">${item.name}</td>
+        <td class="p-2 text-right font-mono">${item.count.toLocaleString()}</td>
+        <td class="p-2 text-right font-mono">${item.amountYi.toFixed(2)}</td>
+      </tr>
+    `;
+  });
+
+  rows.push(`
+    <tr onclick="resetBranchChartToTotal()" class="${selectedBranchForChart === "【全部分署】" ? "bg-amber-100 font-bold" : "bg-amber-50/70 font-bold"} cursor-pointer">
+      <td class="p-2 text-center">${String(entries.length + 1).padStart(2, "0")}</td>
+      <td class="p-2 text-center">【全臺合計】</td>
+      <td class="p-2 text-right font-mono">${totCnt.toLocaleString()}</td>
+      <td class="p-2 text-right font-mono">${totAmt.toFixed(2)}</td>
+    </tr>
+  `);
+
+  tbody.innerHTML = rows.join("");
+}
+
+function toggleCountyTablePanel() {
+  const tblPanel = document.getElementById("countyTablePanel");
+  const chartPanel = document.getElementById("countyChartPanel");
+  const lbl = document.getElementById("lblToggleCountyTable");
+  if (!tblPanel || !chartPanel) return;
+
+  const isCollapsed = tblPanel.classList.toggle("hidden");
+  if (isCollapsed) {
+    chartPanel.classList.remove("lg:col-span-8");
+    chartPanel.classList.add("lg:col-span-12");
+    if (lbl) lbl.textContent = "展開左側表";
+  } else {
+    chartPanel.classList.remove("lg:col-span-12");
+    chartPanel.classList.add("lg:col-span-8");
+    if (lbl) lbl.textContent = "收合左側表";
+  }
+  setTimeout(() => {
+    if (chartCountyTrend) {
+      chartCountyTrend.resize();
+      renderCountyTrendChart();
+    }
+  }, 30);
+}
+
+function toggleBranchTablePanel() {
+  const tblPanel = document.getElementById("branchTablePanel");
+  const chartPanel = document.getElementById("branchChartPanel");
+  const lbl = document.getElementById("lblToggleBranchTable");
+  if (!tblPanel || !chartPanel) return;
+
+  const isCollapsed = tblPanel.classList.toggle("hidden");
+  if (isCollapsed) {
+    chartPanel.classList.remove("lg:col-span-8");
+    chartPanel.classList.add("lg:col-span-12");
+    if (lbl) lbl.textContent = "展開左側表";
+  } else {
+    chartPanel.classList.remove("lg:col-span-12");
+    chartPanel.classList.add("lg:col-span-8");
+    if (lbl) lbl.textContent = "收合左側表";
+  }
+  setTimeout(() => {
+    if (chartBranch) {
+      chartBranch.resize();
+      renderBranchComparisonChart();
+    }
+  }, 30);
+}
+
 function selectCountyForTrend(countyName) {
   selectedCountyForChart = countyName;
   renderCountyTable();
@@ -86,6 +201,18 @@ function resetCountyChartToTotal() {
   selectedCountyForChart = "【全臺合計】";
   renderCountyTable();
   renderCountyTrendChart();
+}
+
+function selectBranchForTrend(branchName) {
+  selectedBranchForChart = branchName;
+  renderBranchTable();
+  renderBranchComparisonChart();
+}
+
+function resetBranchChartToTotal() {
+  selectedBranchForChart = "【全部分署】";
+  renderBranchTable();
+  renderBranchComparisonChart();
 }
 
 function renderCountyTrendChart() {
@@ -115,7 +242,7 @@ function renderCountyTrendChart() {
       budgets,
       counts,
       "#0d9488",
-      orderedKeys.length > 10 ? 25 : 0
+      true
     ), true);
     return;
   }
@@ -138,7 +265,7 @@ function renderCountyTrendChart() {
     budgets,
     counts,
     "#0d9488",
-    0
+    false
   ), true);
 }
 
@@ -157,37 +284,55 @@ function renderTrendChart() {
     budgets,
     counts,
     "#d97706",
-    0
+    false
   ), true);
 }
 
 function renderBranchComparisonChart() {
-  const mapAmt = {}, mapCnt = {};
-  deduplicatedRecords.forEach(r => {
-    const b = r["分署"] || "未分類";
-    mapAmt[b] = (mapAmt[b] || 0) + r["核定經費_千元"];
-    mapCnt[b] = (mapCnt[b] || 0) + 1;
-  });
+  if (selectedBranchForChart && selectedBranchForChart !== "【全部分署】") {
+    const years = getAllYearsInRange();
+    const targetData = deduplicatedRecords.filter(r => formatBranchDisplayName(r["分署"]) === selectedBranchForChart);
+    const budgets = years.map(y => Number((targetData.filter(r => String(r["年度"]) === y).reduce((a, b) => a + b["核定經費_千元"], 0) / 100000).toFixed(2)));
+    const counts = years.map(y => targetData.filter(r => String(r["年度"]) === y).length);
+    const totalB = budgets.reduce((a, b) => a + b, 0);
+    const totalC = counts.reduce((a, b) => a + b, 0);
 
-  const branches = Object.keys(mapAmt).sort((a, b) => (CHINESE_NUM_ORDER[a] || 99) - (CHINESE_NUM_ORDER[b] || 99));
-  const labels = branches.map(b => b.includes("水規") ? "水規分署" : (b.length === 1 ? `${b}分署` : b));
-  const budgets = branches.map(b => Number((mapAmt[b] / 100000).toFixed(2)));
-  const counts = branches.map(b => mapCnt[b]);
+    chartBranch.setOption(buildDualLayerOption(
+      `${selectedBranchForChart}年度經費趨勢圖${getYearRangeLabel()}`,
+      `區間總核定：${totalB.toFixed(2)} 億元   ｜   總案件數：${totalC.toLocaleString()} 筆`,
+      years.map(y => `${y}年`),
+      budgets,
+      counts,
+      "#0d9488",
+      false
+    ), true);
+    return;
+  }
+
+  const entries = getSortedBranchEntries();
+  const labels = entries.map(e => e.name);
+  const budgets = entries.map(e => Number(e.amountYi.toFixed(2)));
+  const counts = entries.map(e => e.count);
   const totalB = budgets.reduce((a, b) => a + b, 0);
   const totalC = counts.reduce((a, b) => a + b, 0);
 
   chartBranch.setOption(buildDualLayerOption(
     `各分署經費比較圖${getYearRangeLabel()}`,
-    `合計核定：${totalB.toFixed(2)} 億元   ｜   總案件數：${totalC.toLocaleString()} 筆   ｜   單位數：${branches.length} 個`,
+    `合計核定：${totalB.toFixed(2)} 億元   ｜   總案件數：${totalC.toLocaleString()} 筆   ｜   單位數：${entries.length} 個`,
     labels,
     budgets,
     counts,
     "#0d9488",
-    0
+    false
   ), true);
 }
 
-function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lineColor, rotateLabel = 0) {
+function toVerticalChineseLabel(text) {
+  const clean = text === "全國性或未分配" ? "未分配" : String(text || "");
+  return clean.split("").join("\n");
+}
+
+function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lineColor, verticalX = false) {
   const totalB = budgets.reduce((a, b) => a + b, 0);
   const nonZeroBudgets = budgets.filter(v => v > 0);
   const avgB = nonZeroBudgets.length ? totalB / nonZeroBudgets.length : 0;
@@ -223,8 +368,8 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
     },
     axisPointer: { link: [{ xAxisIndex: "all" }] },
     grid: [
-      { left: "7%", right: "4%", top: 92, height: "43%" },
-      { left: "7%", right: "4%", top: "66%", height: "21%" }
+      { left: 74, right: 24, top: 84, height: "41%" },
+      { left: 74, right: 24, top: "61%", height: "20%" }
     ],
     xAxis: [
       { type: "category", data: xLabels, gridIndex: 0, axisTick: { show: false }, axisLine: { lineStyle: { color: "#cbd5e1" } }, axisLabel: { show: false } },
@@ -236,10 +381,13 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
         axisLine: { lineStyle: { color: "#94a3b8" } },
         axisLabel: {
           interval: 0,
-          rotate: rotateLabel,
+          rotate: 0,
+          margin: 8,
+          lineHeight: 13,
           fontWeight: "600",
-          fontSize: isDense ? 10.5 : 12,
-          color: "#1e293b"
+          fontSize: isDense ? 11 : 12,
+          color: "#1e293b",
+          formatter: val => (verticalX ? toVerticalChineseLabel(val) : val)
         }
       }
     ],
@@ -247,7 +395,10 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
       {
         type: "value",
         name: "核定經費 (億元)",
-        nameTextStyle: { color: "#475569", fontSize: 11, fontWeight: "600" },
+        nameLocation: "middle",
+        nameRotate: 90,
+        nameGap: 48,
+        nameTextStyle: { color: "#334155", fontSize: 11.5, fontWeight: "bold" },
         gridIndex: 0,
         max: maxB > 0 ? Math.ceil(maxB * 1.25) : 10,
         axisLabel: { color: "#64748b", fontSize: 11 },
@@ -256,7 +407,10 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
       {
         type: "value",
         name: "案件數 (筆)",
-        nameTextStyle: { color: "#475569", fontSize: 11, fontWeight: "600" },
+        nameLocation: "middle",
+        nameRotate: 90,
+        nameGap: 48,
+        nameTextStyle: { color: "#334155", fontSize: 11.5, fontWeight: "bold" },
         gridIndex: 1,
         axisLabel: { color: "#64748b", fontSize: 11 },
         splitLine: { lineStyle: { type: "dashed", color: "#f1f5f9" } }
@@ -329,6 +483,7 @@ function renderActiveCharts() {
     renderTrendChart();
   }
   if (!document.getElementById("viewBranch").classList.contains("hidden")) {
+    renderBranchTable();
     chartBranch.resize();
     renderBranchComparisonChart();
   }
