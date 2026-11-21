@@ -48,3 +48,13 @@ function extractPrimaryCounty(raw) {
   if (parts.length && STD_22_COUNTIES.includes(parts[0])) return parts[0];
   return "全國性或未分配";
 }
+
+/**
+ * 萃取核心案名：剝除括號內的年度、期別、修正/追加附註，提升跨年度延續案件比對準確度
+ */
+function getCoreProjectName(rawName) {
+  let name = normalizeText(rawName).replace(/台/g, "臺");
+  name = name.replace(/[（(][^）)]*(?:年度|第[一二三四五六七八九十\d]+期|期|修正|追加|調整|延續|併案)[^）)]*[）)]/g, "");
+  name = name.replace(/[-－—](?:1\d{2}年度?|第[一二三四五六七八九十\d]+期)$/g, "");
+  return name.trim() || normalizeText(rawName);
+}
