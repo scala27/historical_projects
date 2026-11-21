@@ -2,6 +2,7 @@ let chartCountyTrend = null;
 let chartTrend = null;
 let chartBranch = null;
 let selectedBranchForChart = "【全部分署】";
+let trendChartMode = "total"; // "total" | "structure"
 
 function initCharts() {
   chartCountyTrend = echarts.init(document.getElementById("chartCountyTrend"));
@@ -13,6 +14,26 @@ function initCharts() {
     chartTrend && chartTrend.resize();
     chartBranch && chartBranch.resize();
   });
+}
+
+function setTrendChartMode(mode) {
+  trendChartMode = mode === "structure" ? "structure" : "total";
+  const btnTotal = document.getElementById("btnTrendModeTotal");
+  const btnStruct = document.getElementById("btnTrendModeStructure");
+  if (btnTotal && btnStruct) {
+    if (trendChartMode === "structure") {
+      btnStruct.classList.add("bg-[#1f538d]", "text-white");
+      btnStruct.classList.remove("text-slate-700");
+      btnTotal.classList.remove("bg-[#1f538d]", "text-white");
+      btnTotal.classList.add("text-slate-700");
+    } else {
+      btnTotal.classList.add("bg-[#1f538d]", "text-white");
+      btnTotal.classList.remove("text-slate-700");
+      btnStruct.classList.remove("bg-[#1f538d]", "text-white");
+      btnStruct.classList.add("text-slate-700");
+    }
+  }
+  renderTrendChart();
 }
 
 function getCountyTableAxisList() {
@@ -271,11 +292,151 @@ function renderCountyTrendChart() {
 
 function renderTrendChart() {
   const years = getAllYearsInRange();
+  const targetLbl = document.getElementById("selTarget").value;
+
+  if (trendChartMode === "structure") {
+    const xLabels = years.map(y => `${y}年`);
+    const engData = [];
+    const landData = [];
+    const subData = [];
+    const engCnt = [];
+    const landCnt = [];
+    const subCnt = [];
+
+    years.forEach(y => {
+      const yRows = deduplicatedRecords.filter(r => String(r["年度"]) === y);
+      const eRows = yRows.filter(r => getMajorCategory(r["類別"]) === "工程類");
+      const lRows = yRows.filter(r => getMajorCategory(r["類別"]) === "用地類");
+      const sRows = yRows.filter(r => getMajorCategory(r["類別"]) === "補助類");
+
+      engData.push(Number((eRows.reduce((a, b) => a + b["核定經費_千元"], 0) / 100000).toFixed(2)));
+      landData.push(Number((lRows.reduce((a, b) => a + b["核定經費_千元"], 0) / 100000).toFixed(2)));
+      subData.push(Number((sRows.reduce((a, b) => a + b["核定經費_千元"], 0) / 100000).toFixed(2)));
+
+      engCnt.push(eRows.length);
+      landCnt.push(lRows.length);
+      subCnt.push(sRows.length);
+    });
+
+    const totEng = engData.reduce((a, b) => a + b, 0);
+    const totLand = landData.reduce((a, b) => a + b, 0);
+    const totSub = subData.reduce((a, b) => a + b, 0);
+    const grandTotal = totEng + totLand + totSub;
+
+    const pct = v => (grandTotal > 0 ? ((v / grandTotal) * 100).toFixed(1) : "0.0");
+
+    chartTrend.setOption({
+      backgroundColor: "#ffffff",
+      title: {
+        text: `年度案件性質經費結構圖${getYearRangeLabel()}`,
+        subtext: `查詢範圍：${targetLbl}   ｜   工程類 ${totEng.toFixed(2)}億 (${pct(totEng)}%)   ｜   用地類 ${totLand.toFixed(2)}億 (${pct(totLand)}%)   ｜   補助類 ${totSub.toFixed(2)}億 (${pct(totSub)}%)`,
+        left: "center",
+        top: 10,
+        itemGap: 8,
+        textStyle: { fontSize: 17, fontWeight: "bold", color: "#0f294a" },
+        subtextStyle: { fontSize: 12, fontWeight: "600", color: "#475569" }
+      },
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        backgroundColor: "rgba(15, 23, 42, 0.92)",
+        borderWidth: 0,
+        textStyle: { color: "#f8fafc", fontSize: 12 },
+        formatter: params => {
+          if (!params || !params.length) return "";
+          const idx = params[0].dataIndex;
+          const yrTotal = engData[idx] + landData[idx] + subData[idx];
+          const pYr = val => (yrTotal > 0 ? ((val / yrTotal) * 100).toFixed(1) : "0.0");
+          return [
+            `<div style="font-weight:bold;margin-bottom:4px;">${params[0].axisValue}（合計 ${yrTotal.toFixed(2)} 億元）</div>`,
+            `<div>● 工程類：<b>${engData[idx].toFixed(2)}</b> 億元（${pYr(engData[idx])}% / ${engCnt[idx]} 筆）</div>`,
+            `<div>● 用地類：<b>${landData[idx].toFixed(2)}</b> 億元（${pYr(landData[idx])}% / ${landCnt[idx]} 筆）</div>`,
+            `<div>● 補助類：<b>${subData[idx].toFixed(2)}</b> 億元（${pYr(subData[idx])}% / ${subCnt[idx]} 筆）</div>`
+          ].join("");
+        }
+      },
+      legend: {
+        top: 62,
+        itemWidth: 14,
+        itemHeight: 10,
+        textStyle: { fontSize: 12, fontWeight: "600", color: "#334155" }
+      },
+      grid: { left: 74, right: 28, top: 102, bottom: 44 },
+      xAxis: {
+        type: "category",
+        data: xLabels,
+        axisTick: { show: false },
+        axisLine: { lineStyle: { color: "#94a3b8" } },
+        axisLabel: { fontWeight: "600", fontSize: 12, color: "#1e293b" }
+      },
+      yAxis: {
+        type: "value",
+        name: "核定經費 (億元)",
+        nameLocation: "middle",
+        nameRotate: 90,
+        nameGap: 48,
+        nameTextStyle: { color: "#334155", fontSize: 11.5, fontWeight: "bold" },
+        axisLabel: { color: "#64748b", fontSize: 11 },
+        splitLine: { lineStyle: { type: "dashed", color: "#e2e8f0" } }
+      },
+      series: [
+        {
+          name: "工程類",
+          type: "bar",
+          stack: "total",
+          barMaxWidth: 52,
+          itemStyle: { color: "#2b6cb0" },
+          label: {
+            show: true,
+            position: "inside",
+            color: "#ffffff",
+            fontWeight: "600",
+            fontSize: 11,
+            formatter: p => (p.value >= 1 ? `${p.value.toFixed(1)}億` : "")
+          },
+          data: engData
+        },
+        {
+          name: "用地類",
+          type: "bar",
+          stack: "total",
+          barMaxWidth: 52,
+          itemStyle: { color: "#d97706" },
+          label: {
+            show: true,
+            position: "inside",
+            color: "#ffffff",
+            fontWeight: "600",
+            fontSize: 11,
+            formatter: p => (p.value >= 1 ? `${p.value.toFixed(1)}億` : "")
+          },
+          data: landData
+        },
+        {
+          name: "補助類",
+          type: "bar",
+          stack: "total",
+          barMaxWidth: 52,
+          itemStyle: { color: "#0d9488", borderRadius: [4, 4, 0, 0] },
+          label: {
+            show: true,
+            position: "inside",
+            color: "#ffffff",
+            fontWeight: "600",
+            fontSize: 11,
+            formatter: p => (p.value >= 1 ? `${p.value.toFixed(1)}億` : "")
+          },
+          data: subData
+        }
+      ]
+    }, true);
+    return;
+  }
+
   const budgets = years.map(y => Number((deduplicatedRecords.filter(r => String(r["年度"]) === y).reduce((a, b) => a + b["核定經費_千元"], 0) / 100000).toFixed(2)));
   const counts = years.map(y => deduplicatedRecords.filter(r => String(r["年度"]) === y).length);
   const totalB = budgets.reduce((a, b) => a + b, 0);
   const totalC = counts.reduce((a, b) => a + b, 0);
-  const targetLbl = document.getElementById("selTarget").value;
 
   chartTrend.setOption(buildDualLayerOption(
     `年度趨勢圖${getYearRangeLabel()}`,
