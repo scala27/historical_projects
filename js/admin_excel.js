@@ -64,6 +64,7 @@ function openEditModal(rec) {
   document.getElementById("editUsable").value = rec["可支用經費_千元"];
   document.getElementById("editCode").value = rec["工程編號"];
   document.getElementById("editCoords").value = rec["座標點位"];
+  document.getElementById("editConcern").value = rec["地方關切"] || "";
   document.getElementById("editRemark").value = rec["備註資訊"];
   document.getElementById("modalEdit").classList.remove("hidden");
 }
@@ -83,6 +84,7 @@ async function saveEditedProject() {
     "可支用經費_千元": parseFloat(document.getElementById("editUsable").value) || 0,
     "工程編號": normalizeText(document.getElementById("editCode").value),
     "座標點位": normalizeText(document.getElementById("editCoords").value),
+    "地方關切": normalizeText(document.getElementById("editConcern").value),
     "備註資訊": normalizeText(document.getElementById("editRemark").value)
   };
 
@@ -151,13 +153,14 @@ function handleExcelFileSelect(event) {
           "水門_座": parseInt(row["水門_座"] || 0, 10) || 0,
           "水防道路_m2": parseFloat(row["水防道路_m2"] || 0) || 0,
           "其他結構說明": normalizeText(row["其他結構說明"]),
-          "備註資訊": normalizeText(row["備註資訊"] || row["備註"])
+          "備註資訊": normalizeText(row["備註資訊"] || row["備註"]),
+          "地方關切": normalizeText(row["地方關切"] || row["民代關切"] || "")
         });
       });
     });
 
     pendingImportRecords = parsed;
-    document.getElementById("lblImportSummary").textContent = `檔案《${file.name}》共解析出 ${parsed.length} 筆有效案件（寫入時將自動依「年度＋分署＋工程編號／案件名稱」執行防重複合併）：`;
+    document.getElementById("lblImportSummary").textContent = `檔案《${file.name}》共解析出 ${parsed.length} 筆有效案件（寫入時將自動依「年度＋分署＋類別＋工程編號／案件名稱」執行防重複合併）：`;
     document.getElementById("tbodyImportPreview").innerHTML = parsed.slice(0, 100).map(r => `
       <tr>
         <td class="p-1.5 text-center">${r["年度"]}</td>
