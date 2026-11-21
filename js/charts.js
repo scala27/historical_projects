@@ -14,6 +14,15 @@ function initCharts() {
   });
 }
 
+function getCountyTableAxisList() {
+  const list = [...STD_22_COUNTIES];
+  const hasUnassigned = deduplicatedRecords.some(r => !STD_22_COUNTIES.includes(extractPrimaryCounty(r["縣市"])));
+  if (hasUnassigned) {
+    list.push("全國性或未分配");
+  }
+  return list;
+}
+
 function renderCountyTable() {
   const cntMap = {}, amtMap = {};
   STD_22_COUNTIES.forEach(c => { cntMap[c] = 0; amtMap[c] = 0; });
@@ -47,7 +56,7 @@ function renderCountyTable() {
   });
 
   rows.push(`
-    <tr onclick="selectCountyForTrend('全國性或未分配')" class="bg-white hover:bg-sky-50 cursor-pointer">
+    <tr onclick="selectCountyForTrend('全國性或未分配')" class="${selectedCountyForChart === "全國性或未分配" ? "bg-sky-100 font-bold" : "bg-white"} hover:bg-sky-50 cursor-pointer">
       <td class="p-2 text-center">23</td>
       <td class="p-2 text-center">全國性或未分配</td>
       <td class="p-2 text-right font-mono">${unCnt.toLocaleString()}</td>
@@ -56,7 +65,7 @@ function renderCountyTable() {
   `);
 
   rows.push(`
-    <tr onclick="resetCountyChartToTotal()" class="bg-amber-100 font-bold cursor-pointer">
+    <tr onclick="resetCountyChartToTotal()" class="${selectedCountyForChart === "【全臺合計】" ? "bg-amber-100 font-bold" : "bg-amber-50/70 font-bold"} cursor-pointer">
       <td class="p-2 text-center">24</td>
       <td class="p-2 text-center">【全臺合計】</td>
       <td class="p-2 text-right font-mono">${totCnt.toLocaleString()}</td>
@@ -80,9 +89,40 @@ function resetCountyChartToTotal() {
 }
 
 function renderCountyTrendChart() {
+  if (selectedCountyForChart === "【全臺合計】") {
+    const orderedKeys = getCountyTableAxisList();
+    const amtMap = {}, cntMap = {};
+    orderedKeys.forEach(k => { amtMap[k] = 0; cntMap[k] = 0; });
+
+    deduplicatedRecords.forEach(r => {
+      const p = extractPrimaryCounty(r["縣市"]);
+      const key = STD_22_COUNTIES.includes(p) ? p : (orderedKeys.includes("全國性或未分配") ? "全國性或未分配" : p);
+      if (amtMap[key] !== undefined) {
+        amtMap[key] += r["核定經費_千元"];
+        cntMap[key] += 1;
+      }
+    });
+
+    const budgets = orderedKeys.map(k => Number((amtMap[k] / 100000).toFixed(2)));
+    const counts = orderedKeys.map(k => cntMap[k]);
+    const totalB = budgets.reduce((a, b) => a + b, 0);
+    const totalC = counts.reduce((a, b) => a + b, 0);
+
+    chartCountyTrend.setOption(buildDualLayerOption(
+      `各縣市核定經費比較圖${getYearRangeLabel()}`,
+      `合計核定：${totalB.toFixed(2)} 億元   ｜   總案件數：${totalC.toLocaleString()} 筆   ｜   縣市數：${orderedKeys.length} 項`,
+      orderedKeys,
+      budgets,
+      counts,
+      "#0d9488",
+      orderedKeys.length > 10 ? 25 : 0
+    ), true);
+    return;
+  }
+
   const years = getAllYearsInRange();
-  const targetData = selectedCountyForChart === "【全臺合計】"
-    ? deduplicatedRecords
+  const targetData = selectedCountyForChart === "全國性或未分配"
+    ? deduplicatedRecords.filter(r => !STD_22_COUNTIES.includes(extractPrimaryCounty(r["縣市"])))
     : deduplicatedRecords.filter(r => extractPrimaryCounty(r["縣市"]) === selectedCountyForChart);
 
   const budgets = years.map(y => Number((targetData.filter(r => String(r["年度"]) === y).reduce((a, b) => a + b["核定經費_千元"], 0) / 100000).toFixed(2)));
@@ -90,15 +130,15 @@ function renderCountyTrendChart() {
 
   const totalB = budgets.reduce((a, b) => a + b, 0);
   const totalC = counts.reduce((a, b) => a + b, 0);
-  const titleName = selectedCountyForChart === "【全臺合計】" ? "全臺各縣市合計" : selectedCountyForChart;
 
   chartCountyTrend.setOption(buildDualLayerOption(
-    `${titleName}年度經費趨勢圖${getYearRangeLabel()}`,
+    `${selectedCountyForChart}年度經費趨勢圖${getYearRangeLabel()}`,
     `區間總核定：${totalB.toFixed(2)} 億元   ｜   總案件數：${totalC.toLocaleString()} 筆`,
     years.map(y => `${y}年`),
     budgets,
     counts,
-    "#0d9488"
+    "#0d9488",
+    0
   ), true);
 }
 
@@ -116,7 +156,8 @@ function renderTrendChart() {
     years.map(y => `${y}年`),
     budgets,
     counts,
-    "#d97706"
+    "#d97706",
+    0
   ), true);
 }
 
@@ -141,14 +182,26 @@ function renderBranchComparisonChart() {
     labels,
     budgets,
     counts,
-    "#0d9488"
+    "#0d9488",
+    0
   ), true);
 }
 
-function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lineColor) {
+function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lineColor, rotateLabel = 0) {
   const totalB = budgets.reduce((a, b) => a + b, 0);
-  const avgB = budgets.length ? totalB / budgets.length : 0;
+  const nonZeroBudgets = budgets.filter(v => v > 0);
+  const avgB = nonZeroBudgets.length ? totalB / nonZeroBudgets.length : 0;
   const maxB = Math.max(...budgets, 0);
+  const isDense = xLabels.length > 14;
+
+  const barBlueGrad = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+    { offset: 0, color: "#3182ce" },
+    { offset: 1, color: "#1e3a8a" }
+  ]);
+  const barPeakGrad = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+    { offset: 0, color: "#f59e0b" },
+    { offset: 1, color: "#c2410c" }
+  ]);
 
   return {
     backgroundColor: "#ffffff",
@@ -157,23 +210,57 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
       subtext: subTitle,
       left: "center",
       top: 10,
-      itemGap: 10,
-      textStyle: { fontSize: 18, fontWeight: "bold", color: "#1a202c" },
-      subtextStyle: { fontSize: 13, fontWeight: "bold", color: "#1a365d" }
+      itemGap: 8,
+      textStyle: { fontSize: 17, fontWeight: "bold", color: "#0f294a" },
+      subtextStyle: { fontSize: 12.5, fontWeight: "600", color: "#475569" }
     },
-    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      backgroundColor: "rgba(15, 23, 42, 0.92)",
+      borderWidth: 0,
+      textStyle: { color: "#f8fafc", fontSize: 12 }
+    },
     axisPointer: { link: [{ xAxisIndex: "all" }] },
     grid: [
-      { left: "7%", right: "5%", top: 88, height: "44%" },
-      { left: "7%", right: "5%", top: "66%", height: "22%" }
+      { left: "7%", right: "4%", top: 92, height: "43%" },
+      { left: "7%", right: "4%", top: "66%", height: "21%" }
     ],
     xAxis: [
-      { type: "category", data: xLabels, gridIndex: 0, axisLabel: { show: false } },
-      { type: "category", data: xLabels, gridIndex: 1, axisLabel: { fontWeight: "bold", color: "#1a202c" } }
+      { type: "category", data: xLabels, gridIndex: 0, axisTick: { show: false }, axisLine: { lineStyle: { color: "#cbd5e1" } }, axisLabel: { show: false } },
+      {
+        type: "category",
+        data: xLabels,
+        gridIndex: 1,
+        axisTick: { show: false },
+        axisLine: { lineStyle: { color: "#94a3b8" } },
+        axisLabel: {
+          interval: 0,
+          rotate: rotateLabel,
+          fontWeight: "600",
+          fontSize: isDense ? 10.5 : 12,
+          color: "#1e293b"
+        }
+      }
     ],
     yAxis: [
-      { type: "value", name: "核定經費 (億元)", gridIndex: 0, max: maxB > 0 ? Math.ceil(maxB * 1.25) : 10, splitLine: { lineStyle: { type: "dashed", color: "#e2e8f0" } } },
-      { type: "value", name: "案件數 (筆)", gridIndex: 1, splitLine: { lineStyle: { type: "dashed", color: "#e2e8f0" } } }
+      {
+        type: "value",
+        name: "核定經費 (億元)",
+        nameTextStyle: { color: "#475569", fontSize: 11, fontWeight: "600" },
+        gridIndex: 0,
+        max: maxB > 0 ? Math.ceil(maxB * 1.25) : 10,
+        axisLabel: { color: "#64748b", fontSize: 11 },
+        splitLine: { lineStyle: { type: "dashed", color: "#e2e8f0" } }
+      },
+      {
+        type: "value",
+        name: "案件數 (筆)",
+        nameTextStyle: { color: "#475569", fontSize: 11, fontWeight: "600" },
+        gridIndex: 1,
+        axisLabel: { color: "#64748b", fontSize: 11 },
+        splitLine: { lineStyle: { type: "dashed", color: "#f1f5f9" } }
+      }
     ],
     series: [
       {
@@ -181,26 +268,31 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
         type: "bar",
         xAxisIndex: 0,
         yAxisIndex: 0,
-        barMaxWidth: 44,
+        barMaxWidth: isDense ? 24 : 42,
         data: budgets.map(v => ({
           value: v,
-          itemStyle: { color: (v === maxB && budgets.length > 1 && maxB > 0) ? "#dd6b20" : "#2b6cb0", borderRadius: [4, 4, 0, 0] }
+          itemStyle: {
+            color: (v === maxB && budgets.length > 1 && maxB > 0) ? barPeakGrad : barBlueGrad,
+            borderRadius: [4, 4, 0, 0]
+          }
         })),
         label: {
           show: true,
           position: "top",
-          fontWeight: "bold",
-          fontSize: 11,
+          fontWeight: "600",
+          fontSize: isDense ? 9.5 : 11,
+          color: "#1e3a8a",
           formatter: p => {
+            if (!p.value) return "";
             const pct = totalB > 0 ? ((p.value / totalB) * 100).toFixed(1) : "0.0";
-            return budgets.length > 1 ? `${p.value.toFixed(2)} 億\n(${pct}%)` : `${p.value.toFixed(2)} 億`;
+            return budgets.length > 1 ? `${p.value.toFixed(2)}億\n(${pct}%)` : `${p.value.toFixed(2)}億`;
           }
         },
         markLine: budgets.length > 1 && maxB > 0 ? {
           symbol: "none",
-          lineStyle: { type: "dotted", color: "#64748b", width: 1.5 },
-          label: { formatter: `平均 ${avgB.toFixed(2)} 億`, position: "insideEndTop" },
-          data: [{ yAxis: avgB }]
+          lineStyle: { type: "dashed", color: "#64748b", width: 1.3 },
+          label: { formatter: `平均 ${avgB.toFixed(2)} 億`, position: "insideEndTop", color: "#334155", fontSize: 11 },
+          data: [{ yAxis: Number(avgB.toFixed(2)) }]
         } : undefined
       },
       {
@@ -210,11 +302,18 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
         yAxisIndex: 1,
         data: counts,
         symbol: "circle",
-        symbolSize: 8,
-        lineStyle: { color: lineColor, width: 2.5 },
-        itemStyle: { color: lineColor },
-        areaStyle: { color: lineColor, opacity: 0.15 },
-        label: { show: true, position: "top", fontWeight: "bold", fontSize: 11, formatter: "{c} 筆" }
+        symbolSize: isDense ? 6 : 7.5,
+        lineStyle: { color: lineColor, width: 2.2 },
+        itemStyle: { color: lineColor, borderColor: "#ffffff", borderWidth: 1.5 },
+        areaStyle: { color: lineColor, opacity: 0.14 },
+        label: {
+          show: true,
+          position: "top",
+          fontWeight: "600",
+          fontSize: isDense ? 9.5 : 11,
+          color: "#0f766e",
+          formatter: p => (p.value > 0 ? `${p.value} 筆` : "")
+        }
       }
     ]
   };
