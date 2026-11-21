@@ -1,26 +1,29 @@
 let allRecords = [];
 let filteredRecords = [];
 let deduplicatedRecords = [];
+let mergedDuplicateRecords = [];
+let zeroBudgetRecords = [];
+let detailAuditMode = "all"; // "all" | "merged" | "zero"
 let adminPasscode = "";
 let selectedCountyForChart = "【全臺合計】";
 let pendingImportRecords = [];
 let detailSortAsc = {};
 let isResizingCol = false;
 
-const COL_WIDTH_STORAGE_KEY = "flood_projects_detail_col_widths_v1";
+const COL_WIDTH_STORAGE_KEY = "flood_projects_detail_col_widths_v2";
 const DEFAULT_DETAIL_COL_WIDTHS = {
   year: 48,
   category: 78,
   branch: 50,
   county: 76,
   water: 84,
-  name: 310,
+  name: 300,
   approved: 90,
   usable: 90,
-  code: 156,
-  coords: 86,
-  remark: 140,
-  appendix: 86
+  code: 150,
+  remark: 130,
+  concern: 112,
+  appendix: 82
 };
 
 function $(id) {
@@ -316,6 +319,7 @@ async function loadAllData(forceNotify) {
       "工程編號": normalizeText(r["工程編號"]),
       "座標點位": normalizeText(r["座標點位"]),
       "備註資訊": normalizeText(r["備註資訊"]),
+      "地方關切": normalizeText(r["地方關切"]),
       "核定經費_千元": parseFloat(r["核定經費_千元"]) || 0,
       "可支用經費_千元": parseFloat(r["可支用經費_千元"]) || 0
     }));
@@ -403,19 +407,27 @@ function getAllYearsInRange() {
   return list;
 }
 
+function setDetailAuditMode(mode) {
+  detailAuditMode = mode;
+  renderDetailTable();
+}
+
 function applyFilters() {
+  detailAuditMode = "all";
   const sY = parseInt($("selYearStart") ? $("selYearStart").value : "0", 10);
   const eY = parseInt($("selYearEnd") ? $("selYearEnd").value : "999", 10);
   const dim = $("selDimension") ? $("selDimension").value : "branch";
   const target = $("selTarget") ? $("selTarget").value : "【全部分署】";
   const sub = $("selSubFilter") ? $("selSubFilter").value : "【全部縣市】";
   const kw = normalizeText($("txtKeyword") ? $("txtKeyword").value : "").toLowerCase();
+  const onlyConcern = Boolean($("chkOnlyConcern") && $("chkOnlyConcern").checked);
   const selectedCats = Array.from(document.querySelectorAll(".cat-chk:checked")).map(c => c.value);
 
   filteredRecords = allRecords.filter(r => {
     const yr = parseInt(r["年度"], 10);
     if (yr < sY || yr > eY) return false;
     if (!selectedCats.includes(r["類別"])) return false;
+    if (onlyConcern && !r["地方關切"]) return false;
 
     if (dim === "branch") {
       if (target !== "【全部分署】" && r["分署"] !== target) return false;
@@ -426,24 +438,39 @@ function applyFilters() {
     }
 
     if (kw) {
-      const hay = `${r["案件名稱"]} ${r["水系"]} ${r["工程編號"]} ${r["備註資訊"]}`.toLowerCase();
+      const hay = `${r["案件名稱"]} ${r["水系"]} ${r["工程編號"]} ${r["備註資訊"]} ${r["地方關切"]}`.toLowerCase();
       if (!hay.includes(kw)) return false;
     }
     return true;
   });
 
+  zeroBudgetRecords = filteredRecords.filter(r => r["核定經費_千元"] <= 0);
   const valid = filteredRecords.filter(r => r["核定經費_千元"] > 0);
+  mergedDuplicateRecords = [];
+
   if (sY !== eY) {
     const sorted = [...valid].sort((a, b) => {
       if (a["分署"] !== b["分署"]) return a["分署"].localeCompare(b["分署"]);
-      if (a["案件名稱"] !== b["案件名稱"]) return a["案件名稱"].localeCompare(b["案件名稱"]);
-      if (b["年度"] !== a["年度"]) return parseInt(b["年度"]) - parseInt(a["年度"]);
+      if (a["類別"] !== b["類別"]) return a["類別"].localeCompare(b["類別"]);
+      const coreA = getCoreProjectName(a["案件名稱"]);
+      const coreB = getCoreProjectName(b["案件名稱"]);
+      if (coreA !== coreB) return coreA.localeCompare(coreB);
+      if (b["年度"] !== a["年度"]) return parseInt(b["年度"], 10) - parseInt(a["年度"], 10);
       return b["核定經費_千元"] - a["核定經費_千元"];
     });
+
     const seen = new Set();
     deduplicatedRecords = sorted.filter(r => {
-      const key = `${r["分署"]}__${r["案件名稱"]}`;
-      if (seen.has(key)) return false;
+      // 備註含 [分年累加] 則不合併，各年度獨立計入
+      if (String(r["備註資訊"] || "").includes("[分年累加]")) {
+        return true;
+      }
+      const coreName = getCoreProjectName(r["案件名稱"]);
+      const key = `${r["分署"]}__${r["類別"]}__${coreName}`;
+      if (seen.has(key)) {
+        mergedDuplicateRecords.push(r);
+        return false;
+      }
       seen.add(key);
       return true;
     });
@@ -540,6 +567,19 @@ function renderCollapsibleCell(rawVal, thresholdLen, alignCenter = false) {
   `;
 }
 
+function renderConcernCell(rawVal) {
+  const text = String(rawVal || "").trim();
+  if (!text || text === "-") {
+    return `<div class="w-full text-center text-slate-400">-</div>`;
+  }
+  const safeText = escapeHtmlAttr(text);
+  return `
+    <div class="w-full truncate text-center" title="${safeText}">
+      <span class="inline-block max-w-full truncate px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium text-[11px]">${safeText}</span>
+    </div>
+  `;
+}
+
 function toggleCellExpand(btn) {
   const wrap = btn.parentElement;
   if (!wrap) return;
@@ -563,16 +603,44 @@ function renderDetailTable() {
   if (thAct) thAct.classList.toggle("hidden", !isAdmin);
   if (colAct) colAct.style.width = isAdmin ? "44px" : "0px";
 
+  let displayRows = filteredRecords;
+  if (detailAuditMode === "merged") {
+    displayRows = mergedDuplicateRecords;
+  } else if (detailAuditMode === "zero") {
+    displayRows = zeroBudgetRecords;
+  }
+
   const sumEl = $("lblDetailSummary");
   if (sumEl) {
-    sumEl.textContent =
-      `共篩選出 ${filteredRecords.length.toLocaleString()} 筆歷史紀錄（頂部統計已排除核定經費 0 元及跨年度重複案件，實計 ${deduplicatedRecords.length.toLocaleString()} 筆）`;
+    if (detailAuditMode === "merged") {
+      sumEl.textContent = `目前檢視：跨年度延續合併排除明細（共 ${mergedDuplicateRecords.length.toLocaleString()} 筆）`;
+    } else if (detailAuditMode === "zero") {
+      sumEl.textContent = `目前檢視：核定經費 0 元案件明細（共 ${zeroBudgetRecords.length.toLocaleString()} 筆）`;
+    } else {
+      sumEl.textContent = `共篩選出 ${filteredRecords.length.toLocaleString()} 筆歷史紀錄（頂部統計實計 ${deduplicatedRecords.length.toLocaleString()} 筆）`;
+    }
+  }
+
+  const auditEl = $("detailAuditLinks");
+  if (auditEl) {
+    const links = [];
+    if (detailAuditMode !== "all") {
+      links.push(`<button type="button" onclick="setDetailAuditMode('all')" class="text-blue-700 hover:underline font-medium">返回全部 (${filteredRecords.length})</button>`);
+    } else {
+      if (mergedDuplicateRecords.length > 0) {
+        links.push(`<button type="button" onclick="setDetailAuditMode('merged')" class="text-slate-500 hover:text-blue-700 underline decoration-slate-300 underline-offset-2">跨年合併 (${mergedDuplicateRecords.length})</button>`);
+      }
+      if (zeroBudgetRecords.length > 0) {
+        links.push(`<button type="button" onclick="setDetailAuditMode('zero')" class="text-slate-500 hover:text-blue-700 underline decoration-slate-300 underline-offset-2">0元案件 (${zeroBudgetRecords.length})</button>`);
+      }
+    }
+    auditEl.innerHTML = links.join("｜");
   }
 
   const tbody = $("tbodyDetail");
   if (!tbody) return;
 
-  tbody.innerHTML = filteredRecords.map((r, idx) => {
+  tbody.innerHTML = displayRows.map((r, idx) => {
     const bg = idx % 2 === 0 ? "bg-slate-50/70" : "bg-white";
     const editBtn = isAdmin
       ? `<td class="px-1.5 py-1.5 text-center">
@@ -595,8 +663,8 @@ function renderDetailTable() {
         <td class="px-1.5 py-1.5 text-right whitespace-nowrap">${formatIntThousand(r["核定經費_千元"])}</td>
         <td class="px-1.5 py-1.5 text-right whitespace-nowrap">${formatIntThousand(r["可支用經費_千元"])}</td>
         <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["工程編號"], 18, true)}</td>
-        <td class="px-1.5 py-1.5 text-slate-600">${renderCollapsibleCell(r["座標點位"], 8, true)}</td>
         <td class="px-1.5 py-1.5 text-slate-600">${renderCollapsibleCell(r["備註資訊"], 12, false)}</td>
+        <td class="px-1.5 py-1.5">${renderConcernCell(r["地方關切"])}</td>
         <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["附表"], 6, true)}</td>
         ${editBtn}
       </tr>
@@ -608,14 +676,18 @@ function sortDetailTable(field) {
   if (isResizingCol) return;
   detailSortAsc[field] = !detailSortAsc[field];
   const asc = detailSortAsc[field];
-  filteredRecords.sort((a, b) => {
+  const targetArr = detailAuditMode === "merged"
+    ? mergedDuplicateRecords
+    : (detailAuditMode === "zero" ? zeroBudgetRecords : filteredRecords);
+
+  targetArr.sort((a, b) => {
     if (typeof a[field] === "number") return asc ? a[field] - b[field] : b[field] - a[field];
     if (field === "分署") {
       const oa = CHINESE_NUM_ORDER[a[field]] || 99;
       const ob = CHINESE_NUM_ORDER[b[field]] || 99;
       return asc ? oa - ob : ob - oa;
     }
-    return asc ? String(a[field]).localeCompare(String(b[field])) : String(b[field]).localeCompare(String(a[field]));
+    return asc ? String(a[field] || "").localeCompare(String(b[field] || "")) : String(b[field] || "").localeCompare(String(a[field] || ""));
   });
   renderDetailTable();
 }
