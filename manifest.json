@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "防洪工程案件統計資料",
-  "short_name": "防洪工程統計",
+  "name": "治水雲庫",
+  "short_name": "治水雲庫",
   "description": "歷年水利先期檢討防洪工程案件與經費查詢系統",
   "start_url": "./index.html",
   "scope": "./",
