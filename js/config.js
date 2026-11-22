@@ -60,7 +60,7 @@ function getCoreProjectName(rawName) {
 }
 
 /**
- * 將原始附表名稱（相容「附表1-河川」、「部-附表4-...」等歷年命名）轉換為對應的「性質」名稱
+ * 將原始附表名稱（相容「附表1-河川」、「部-附表4-...」、「部附表7-維修 (2)」等歷年命名）轉換為對應的「性質」名稱
  */
 function formatAppendixToNature(rawAppendix) {
   const s = normalizeText(rawAppendix);
@@ -70,12 +70,12 @@ function formatAppendixToNature(rawAppendix) {
   if (/附表\s*[3三]/.test(s)) return "土地調適";
   if (/附表\s*[4四]/.test(s)) return "環境營造";
   if (/附表\s*[5五]/.test(s)) return "整建";
-  if (/附表\s*[6六]/.test(s)) return "維修改善";
+  if (/附表\s*[6六7七]/.test(s)) return "維修改善";
   if (s.includes("河川")) return "河川";
   if (s.includes("區排")) return "區排";
   if (s.includes("土地")) return "土地調適";
   if (s.includes("整體環境") || s.includes("環境營造")) return "環境營造";
   if (s.includes("整建")) return "整建";
-  if (s.includes("構造物維修") || s.includes("維修改善")) return "維修改善";
+  if (s.includes("構造物維修") || s.includes("維修改善") || s.includes("維修")) return "維修改善";
   return s;
 }
