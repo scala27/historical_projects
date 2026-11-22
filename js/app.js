@@ -661,6 +661,7 @@ function renderDetailTable() {
 
   tbody.innerHTML = displayRows.map((r, idx) => {
     const bg = idx % 2 === 0 ? "bg-slate-50/70" : "bg-white";
+    const natureText = typeof formatAppendixToNature === "function" ? formatAppendixToNature(r["附表"]) : r["附表"];
     const editBtn = isAdmin
       ? `<td class="px-1.5 py-1.5 text-center">
            <button onclick='openEditModal(${JSON.stringify(r).replace(/'/g, "&#39;")})' title="編輯" aria-label="編輯" class="inline-flex items-center justify-center p-1 rounded text-blue-700 hover:bg-blue-100 transition">
@@ -684,7 +685,7 @@ function renderDetailTable() {
         <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["工程編號"], 18, true)}</td>
         <td class="px-1.5 py-1.5 text-slate-600">${renderCollapsibleCell(r["備註資訊"], 12, false)}</td>
         <td class="px-1.5 py-1.5">${renderConcernCell(r["地方關切"])}</td>
-        <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["附表"], 6, true)}</td>
+        <td class="px-1.5 py-1.5">${renderCollapsibleCell(natureText, 6, true)}</td>
         ${editBtn}
       </tr>
     `;
