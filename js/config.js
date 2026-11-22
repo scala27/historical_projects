@@ -58,3 +58,24 @@ function getCoreProjectName(rawName) {
   name = name.replace(/[-－—](?:1\d{2}年度?|第[一二三四五六七八九十\d]+期)$/g, "");
   return name.trim() || normalizeText(rawName);
 }
+
+/**
+ * 將原始附表名稱（相容「附表1-河川」、「部-附表4-...」等歷年命名）轉換為對應的「性質」名稱
+ */
+function formatAppendixToNature(rawAppendix) {
+  const s = normalizeText(rawAppendix);
+  if (!s || s === "-") return "-";
+  if (/附表\s*[1一]/.test(s)) return "河川";
+  if (/附表\s*[2二]/.test(s)) return "區排";
+  if (/附表\s*[3三]/.test(s)) return "土地調適";
+  if (/附表\s*[4四]/.test(s)) return "環境營造";
+  if (/附表\s*[5五]/.test(s)) return "整建";
+  if (/附表\s*[6六]/.test(s)) return "維修改善";
+  if (s.includes("河川")) return "河川";
+  if (s.includes("區排")) return "區排";
+  if (s.includes("土地")) return "土地調適";
+  if (s.includes("整體環境") || s.includes("環境營造")) return "環境營造";
+  if (s.includes("整建")) return "整建";
+  if (s.includes("構造物維修") || s.includes("維修改善")) return "維修改善";
+  return s;
+}
