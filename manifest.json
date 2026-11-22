@@ -1,18 +1,38 @@
 {
+  "id": "./",
   "name": "防洪工程案件統計資料",
   "short_name": "防洪工程統計",
   "description": "歷年水利先期檢討防洪工程案件與經費查詢系統",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#1a365d",
   "orientation": "any",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a365d'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='24' cy='15' rx='15' ry='5.5'/%3E%3Cpath d='M9 15v28c0 2.8 5.8 5 13.5 5.5'/%3E%3Cpath d='M39 15v15'/%3E%3Cpath d='M9 24.5c0 3 6.7 5.5 15 5.5s15-2.5 15-5.5'/%3E%3Cpath d='M25 53h21c4.5 0 8.2-3.5 8.2-7.8 0-4-3.1-7.4-7.1-7.8-1.1-5.1-5.6-8.9-11.1-8.9-5.4 0-9.9 3.8-11.1 8.8-4.1.4-7.2 3.8-7.2 8 0 4.3 3.5 7.7 7.3 7.7z' fill='%231a365d'/%3E%3C/g%3E%3C/svg%3E",
+      "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
