@@ -163,6 +163,7 @@ function openDetailModal(recId) {
 
   if (body) {
     const safe = v => escapeHtmlAttr(v || "-");
+    const natureText = typeof formatAppendixToNature === "function" ? formatAppendixToNature(rec["附表"]) : rec["附表"];
     const concernHtml = rec["地方關切"]
       ? `<span class="inline-block px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">${safe(rec["地方關切"])}</span>`
       : `<span class="text-slate-400">-</span>`;
@@ -182,7 +183,7 @@ function openDetailModal(recId) {
       <dl class="divide-y divide-slate-100">
         <div class="py-1.5 flex justify-between gap-3"><dt class="text-slate-500 shrink-0">縣市／水系</dt><dd class="text-right font-medium text-slate-800">${safe(rec["縣市"])} ／ ${safe(rec["水系"])}</dd></div>
         <div class="py-1.5 flex justify-between gap-3"><dt class="text-slate-500 shrink-0">案件類別</dt><dd class="text-right font-medium text-slate-800">${safe(rec["類別"])}</dd></div>
-        <div class="py-1.5 flex justify-between gap-3"><dt class="text-slate-500 shrink-0">附表來源</dt><dd class="text-right text-slate-700">${safe(rec["附表"])}</dd></div>
+        <div class="py-1.5 flex justify-between gap-3"><dt class="text-slate-500 shrink-0">性質</dt><dd class="text-right text-slate-700">${safe(natureText)}</dd></div>
         <div class="py-1.5 flex justify-between gap-3"><dt class="text-slate-500 shrink-0">工程編號</dt><dd class="text-right font-mono text-slate-700 break-all">${safe(rec["工程編號"])}</dd></div>
         <div class="py-1.5 flex justify-between items-center gap-3"><dt class="text-slate-500 shrink-0">地方關切</dt><dd class="text-right">${concernHtml}</dd></div>
         <div class="py-1.5 flex justify-between gap-3"><dt class="text-slate-500 shrink-0">座標點位</dt><dd class="text-right font-mono text-slate-600 break-all">${safe(rec["座標點位"])}</dd></div>
