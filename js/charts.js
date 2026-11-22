@@ -2,7 +2,17 @@ let chartCountyTrend = null;
 let chartTrend = null;
 let chartBranch = null;
 let selectedBranchForChart = "【全部分署】";
-let trendChartMode = "total"; // "total" | "structure"
+let trendChartMode = "total"; // "total" | "category" | "nature"
+
+const NATURE_SERIES_CONFIG = [
+  { key: "河川", color: "#2b6cb0" },
+  { key: "區排", color: "#0d9488" },
+  { key: "土地調適", color: "#d97706" },
+  { key: "環境營造", color: "#4d7c4f" },
+  { key: "整建", color: "#5c6bc0" },
+  { key: "維修改善", color: "#a45a52" },
+  { key: "其他", color: "#64748b" }
+];
 
 function initCharts() {
   chartCountyTrend = echarts.init(document.getElementById("chartCountyTrend"));
@@ -16,23 +26,37 @@ function initCharts() {
   });
 }
 
+function getTrendChartTitle() {
+  if (trendChartMode === "category") return "年度類別結構圖";
+  if (trendChartMode === "nature") return "年度性質結構圖";
+  return "年度趨勢圖";
+}
+
 function setTrendChartMode(mode) {
-  trendChartMode = mode === "structure" ? "structure" : "total";
-  const btnTotal = document.getElementById("btnTrendModeTotal");
-  const btnStruct = document.getElementById("btnTrendModeStructure");
-  if (btnTotal && btnStruct) {
-    if (trendChartMode === "structure") {
-      btnStruct.classList.add("bg-[#1f538d]", "text-white");
-      btnStruct.classList.remove("text-slate-700");
-      btnTotal.classList.remove("bg-[#1f538d]", "text-white");
-      btnTotal.classList.add("text-slate-700");
-    } else {
-      btnTotal.classList.add("bg-[#1f538d]", "text-white");
-      btnTotal.classList.remove("text-slate-700");
-      btnStruct.classList.remove("bg-[#1f538d]", "text-white");
-      btnStruct.classList.add("text-slate-700");
-    }
+  if (mode === "category" || mode === "nature") {
+    trendChartMode = mode;
+  } else {
+    trendChartMode = "total";
   }
+
+  const btnMap = {
+    total: document.getElementById("btnTrendModeTotal"),
+    category: document.getElementById("btnTrendModeCategory"),
+    nature: document.getElementById("btnTrendModeNature")
+  };
+
+  Object.keys(btnMap).forEach(k => {
+    const btn = btnMap[k];
+    if (!btn) return;
+    if (k === trendChartMode) {
+      btn.classList.add("bg-[#1f538d]", "text-white");
+      btn.classList.remove("text-slate-700");
+    } else {
+      btn.classList.remove("bg-[#1f538d]", "text-white");
+      btn.classList.add("text-slate-700");
+    }
+  });
+
   renderTrendChart();
 }
 
@@ -290,11 +314,166 @@ function renderCountyTrendChart() {
   ), true);
 }
 
+function renderNatureStructureChart(years, targetLbl) {
+  const xLabels = years.map(y => `${y}年`);
+  const knownKeys = ["河川", "區排", "土地調適", "環境營造", "整建", "維修改善"];
+  const amtSeriesMap = {};
+  const cntSeriesMap = {};
+
+  NATURE_SERIES_CONFIG.forEach(cfg => {
+    amtSeriesMap[cfg.key] = [];
+    cntSeriesMap[cfg.key] = [];
+  });
+
+  years.forEach(y => {
+    const yRows = deduplicatedRecords.filter(r => String(r["年度"]) === y);
+    const yrAmt = {};
+    const yrCnt = {};
+    NATURE_SERIES_CONFIG.forEach(cfg => {
+      yrAmt[cfg.key] = 0;
+      yrCnt[cfg.key] = 0;
+    });
+
+    yRows.forEach(r => {
+      const rawNature = typeof formatAppendixToNature === "function" ? formatAppendixToNature(r["附表"]) : r["附表"];
+      const key = knownKeys.includes(rawNature) ? rawNature : "其他";
+      yrAmt[key] += r["核定經費_千元"];
+      yrCnt[key] += 1;
+    });
+
+    NATURE_SERIES_CONFIG.forEach(cfg => {
+      amtSeriesMap[cfg.key].push(Number((yrAmt[cfg.key] / 100000).toFixed(2)));
+      cntSeriesMap[cfg.key].push(yrCnt[cfg.key]);
+    });
+  });
+
+  const activeConfigs = NATURE_SERIES_CONFIG.filter(cfg => {
+    if (cfg.key !== "其他") return true;
+    return amtSeriesMap["其他"].some(v => v > 0) || cntSeriesMap["其他"].some(c => c > 0);
+  });
+
+  const totalsByKey = {};
+  let grandTotal = 0;
+  let grandCnt = 0;
+  activeConfigs.forEach(cfg => {
+    const sumAmt = amtSeriesMap[cfg.key].reduce((a, b) => a + b, 0);
+    const sumCnt = cntSeriesMap[cfg.key].reduce((a, b) => a + b, 0);
+    totalsByKey[cfg.key] = sumAmt;
+    grandTotal += sumAmt;
+    grandCnt += sumCnt;
+  });
+
+  const pct = v => (grandTotal > 0 ? ((v / grandTotal) * 100).toFixed(1) : "0.0");
+  const breakdownParts = activeConfigs
+    .filter(cfg => totalsByKey[cfg.key] > 0)
+    .map(cfg => `${cfg.key} ${totalsByKey[cfg.key].toFixed(1)}億(${pct(totalsByKey[cfg.key])}%)`);
+
+  const subtextLine1 = `查詢範圍：${targetLbl}   ｜   區間總核定：${grandTotal.toFixed(2)} 億元   ｜   總案件數：${grandCnt.toLocaleString()} 筆`;
+  const subtextLine2 = breakdownParts.length ? breakdownParts.join("  ｜  ") : "目前篩選範圍無資料";
+
+  // 計算每個年度最頂層的非零項目，套用頂部圓角
+  const topSeriesKeyPerYear = years.map((_, yIdx) => {
+    for (let i = activeConfigs.length - 1; i >= 0; i--) {
+      const k = activeConfigs[i].key;
+      if (amtSeriesMap[k][yIdx] > 0) return k;
+    }
+    return "";
+  });
+
+  const series = activeConfigs.map(cfg => ({
+    name: cfg.key,
+    type: "bar",
+    stack: "natureTotal",
+    barMaxWidth: 52,
+    itemStyle: { color: cfg.color },
+    label: {
+      show: true,
+      position: "inside",
+      color: "#ffffff",
+      fontWeight: "600",
+      fontSize: 10.5,
+      formatter: p => (p.value >= 1.5 ? `${p.value.toFixed(1)}億` : "")
+    },
+    data: amtSeriesMap[cfg.key].map((val, yIdx) => ({
+      value: val,
+      itemStyle: {
+        color: cfg.color,
+        borderRadius: topSeriesKeyPerYear[yIdx] === cfg.key ? [4, 4, 0, 0] : [0, 0, 0, 0]
+      }
+    }))
+  }));
+
+  chartTrend.setOption({
+    backgroundColor: "#ffffff",
+    title: {
+      text: `年度案件性質經費結構圖${getYearRangeLabel()}`,
+      subtext: `${subtextLine1}\n${subtextLine2}`,
+      left: "center",
+      top: 8,
+      itemGap: 6,
+      textStyle: { fontSize: 17, fontWeight: "bold", color: "#0f294a" },
+      subtextStyle: { fontSize: 11.5, fontWeight: "600", color: "#475569", lineHeight: 18 }
+    },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      backgroundColor: "rgba(15, 23, 42, 0.92)",
+      borderWidth: 0,
+      textStyle: { color: "#f8fafc", fontSize: 12 },
+      formatter: params => {
+        if (!params || !params.length) return "";
+        const idx = params[0].dataIndex;
+        const yrTotal = activeConfigs.reduce((acc, cfg) => acc + amtSeriesMap[cfg.key][idx], 0);
+        const pYr = val => (yrTotal > 0 ? ((val / yrTotal) * 100).toFixed(1) : "0.0");
+        const lines = [`<div style="font-weight:bold;margin-bottom:4px;">${params[0].axisValue}（合計 ${yrTotal.toFixed(2)} 億元）</div>`];
+        activeConfigs.forEach(cfg => {
+          const val = amtSeriesMap[cfg.key][idx];
+          const cnt = cntSeriesMap[cfg.key][idx];
+          if (val > 0 || cnt > 0) {
+            lines.push(`<div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${cfg.color};margin-right:6px;"></span>${cfg.key}：<b>${val.toFixed(2)}</b> 億元（${pYr(val)}% / ${cnt} 筆）</div>`);
+          }
+        });
+        return lines.join("");
+      }
+    },
+    legend: {
+      top: 76,
+      itemWidth: 14,
+      itemHeight: 10,
+      textStyle: { fontSize: 12, fontWeight: "600", color: "#334155" }
+    },
+    grid: { left: 74, right: 28, top: 114, bottom: 42 },
+    xAxis: {
+      type: "category",
+      data: xLabels,
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: "#94a3b8" } },
+      axisLabel: { fontWeight: "600", fontSize: 12, color: "#1e293b" }
+    },
+    yAxis: {
+      type: "value",
+      name: "核定經費 (億元)",
+      nameLocation: "middle",
+      nameRotate: 90,
+      nameGap: 48,
+      nameTextStyle: { color: "#334155", fontSize: 11.5, fontWeight: "bold" },
+      axisLabel: { color: "#64748b", fontSize: 11 },
+      splitLine: { lineStyle: { type: "dashed", color: "#e2e8f0" } }
+    },
+    series
+  }, true);
+}
+
 function renderTrendChart() {
   const years = getAllYearsInRange();
   const targetLbl = document.getElementById("selTarget").value;
 
-  if (trendChartMode === "structure") {
+  if (trendChartMode === "nature") {
+    renderNatureStructureChart(years, targetLbl);
+    return;
+  }
+
+  if (trendChartMode === "category") {
     const xLabels = years.map(y => `${y}年`);
     const engData = [];
     const landData = [];
@@ -328,7 +507,7 @@ function renderTrendChart() {
     chartTrend.setOption({
       backgroundColor: "#ffffff",
       title: {
-        text: `年度案件性質經費結構圖${getYearRangeLabel()}`,
+        text: `年度案件類別經費結構圖${getYearRangeLabel()}`,
         subtext: `查詢範圍：${targetLbl}   ｜   工程類 ${totEng.toFixed(2)}億 (${pct(totEng)}%)   ｜   用地類 ${totLand.toFixed(2)}億 (${pct(totLand)}%)   ｜   補助類 ${totSub.toFixed(2)}億 (${pct(totSub)}%)`,
         left: "center",
         top: 10,
