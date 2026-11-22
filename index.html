@@ -271,6 +271,7 @@
           <table id="tblDetail" class="table-fixed w-full text-left border-collapse text-xs">
             <colgroup id="detailColGroup">
               <col data-col-key="year" style="width: 48px;" />
+              <col data-col-key="appendix" style="width: 82px;" />
               <col data-col-key="category" style="width: 78px;" />
               <col data-col-key="branch" style="width: 50px;" />
               <col data-col-key="county" style="width: 76px;" />
@@ -281,13 +282,15 @@
               <col data-col-key="code" style="width: 150px;" />
               <col data-col-key="remark" style="width: 130px;" />
               <col data-col-key="concern" style="width: 112px;" />
-              <col data-col-key="appendix" style="width: 82px;" />
               <col id="colActionWidth" data-col-key="action" style="width: 0px;" />
             </colgroup>
             <thead class="sticky top-0 z-20 select-none">
               <tr>
                 <th data-col-key="year" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('年度')">
                   年度<span class="col-resizer" data-col-key="year" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
+                </th>
+                <th data-col-key="appendix" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle">
+                  性質<span class="col-resizer" data-col-key="appendix" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
                 </th>
                 <th data-col-key="category" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('類別')">
                   類別<span class="col-resizer" data-col-key="category" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
@@ -318,9 +321,6 @@
                 </th>
                 <th data-col-key="concern" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle cursor-pointer" onclick="sortDetailTable('地方關切')">
                   地方關切<span class="col-resizer" data-col-key="concern" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
-                </th>
-                <th data-col-key="appendix" class="relative px-1.5 py-2 whitespace-nowrap text-center align-middle">
-                  性質<span class="col-resizer" data-col-key="appendix" title="左右拖曳調整欄寬（雙擊自動適應）"></span>
                 </th>
                 <th id="thActionCol" data-col-key="action" class="px-1.5 py-2 whitespace-nowrap text-center align-middle hidden">操作</th>
               </tr>
