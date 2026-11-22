@@ -88,21 +88,20 @@ function getMobileBranchLabel(rawBranch) {
 function buildLineSummaryText(rec) {
   const branchDisplay = getMobileBranchLabel(rec["分署"]);
   const countyWater = [rec["縣市"], rec["水系"]].filter(Boolean).join("／") || "-";
-  const catStr = rec["附表"] ? `${rec["類別"]}（${rec["附表"]}）` : (rec["類別"] || "-");
   const lines = [
     `【${rec["年度"]}年度｜${branchDisplay}】${rec["案件名稱"]}`,
-    `• 縣市／水系：${countyWater}`,
-    `• 類別：${catStr}`,
-    `• 核定經費：${formatIntThousand(rec["核定經費_千元"])} 千元（可支用：${formatIntThousand(rec["可支用經費_千元"])} 千元）`
+    `- 縣市／水系：${countyWater}`,
+    `- 類別：${rec["類別"] || "-"}`,
+    `- 核定經費：${formatIntThousand(rec["核定經費_千元"])} 千元（可支用：${formatIntThousand(rec["可支用經費_千元"])} 千元）`
   ];
   if (rec["工程編號"] && rec["工程編號"] !== "-") {
-    lines.push(`• 工程編號：${rec["工程編號"]}`);
+    lines.push(`- 工程編號：${rec["工程編號"]}`);
   }
   if (rec["地方關切"] && rec["地方關切"] !== "-") {
-    lines.push(`• 地方關切：${rec["地方關切"]}`);
+    lines.push(`- 地方關切：${rec["地方關切"]}`);
   }
   if (rec["備註資訊"] && rec["備註資訊"] !== "-") {
-    lines.push(`• 備註：${rec["備註資訊"]}`);
+    lines.push(`- 備註：${rec["備註資訊"]}`);
   }
   return lines.join("\n");
 }
