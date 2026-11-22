@@ -32,6 +32,14 @@ function $(id) {
 
 window.addEventListener("DOMContentLoaded", () => {
   try {
+    if (typeof initMobileLayout === "function") {
+      initMobileLayout();
+    }
+  } catch (err) {
+    console.error("initMobileLayout 錯誤:", err);
+  }
+
+  try {
     initCategoryCheckboxes();
   } catch (err) {
     console.error("initCategoryCheckboxes 錯誤:", err);
@@ -642,6 +650,10 @@ function renderDetailTable() {
       }
     }
     auditEl.innerHTML = links.join("｜");
+  }
+
+  if (typeof renderMobileDetailCards === "function") {
+    renderMobileDetailCards(displayRows);
   }
 
   const tbody = $("tbodyDetail");
