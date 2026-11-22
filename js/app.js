@@ -13,6 +13,7 @@ let isResizingCol = false;
 const COL_WIDTH_STORAGE_KEY = "flood_projects_detail_col_widths_v2";
 const DEFAULT_DETAIL_COL_WIDTHS = {
   year: 48,
+  appendix: 82,
   category: 78,
   branch: 50,
   county: 76,
@@ -22,8 +23,7 @@ const DEFAULT_DETAIL_COL_WIDTHS = {
   usable: 90,
   code: 150,
   remark: 130,
-  concern: 112,
-  appendix: 82
+  concern: 112
 };
 
 function $(id) {
@@ -675,6 +675,7 @@ function renderDetailTable() {
     return `
       <tr class="${bg} hover:bg-sky-50">
         <td class="px-1.5 py-1.5 text-center whitespace-nowrap">${r["年度"]}</td>
+        <td class="px-1.5 py-1.5">${renderCollapsibleCell(natureText, 6, true)}</td>
         <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["類別"], 4, true)}</td>
         <td class="px-1.5 py-1.5 text-center font-medium whitespace-nowrap">${r["分署"] || "-"}</td>
         <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["縣市"], 3, true)}</td>
@@ -685,7 +686,6 @@ function renderDetailTable() {
         <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["工程編號"], 18, true)}</td>
         <td class="px-1.5 py-1.5 text-slate-600">${renderCollapsibleCell(r["備註資訊"], 12, false)}</td>
         <td class="px-1.5 py-1.5">${renderConcernCell(r["地方關切"])}</td>
-        <td class="px-1.5 py-1.5">${renderCollapsibleCell(natureText, 6, true)}</td>
         ${editBtn}
       </tr>
     `;
