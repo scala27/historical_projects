@@ -4,13 +4,14 @@ let chartBranch = null;
 let selectedBranchForChart = "【全部分署】";
 let trendChartMode = "total"; // "total" | "category" | "nature"
 
+// 組合 4B 協調色盤（普魯士藍、群青藍、日系柿子橘與低飽和大地輔色）
 const NATURE_SERIES_CONFIG = [
-  { key: "河川", color: "#2b6cb0" },
-  { key: "區排", color: "#0d9488" },
-  { key: "土地調適", color: "#d97706" },
-  { key: "環境營造", color: "#4d7c4f" },
-  { key: "整建", color: "#5c6bc0" },
-  { key: "維修改善", color: "#a45a52" },
+  { key: "河川", color: "#1D3557" },
+  { key: "區排", color: "#004E89" },
+  { key: "土地調適", color: "#ED6D35" },
+  { key: "環境營造", color: "#3D7A6E" },
+  { key: "整建", color: "#6C7A9C" },
+  { key: "維修改善", color: "#B85A3A" },
   { key: "其他", color: "#64748b" }
 ];
 
@@ -49,11 +50,11 @@ function setTrendChartMode(mode) {
     const btn = btnMap[k];
     if (!btn) return;
     if (k === trendChartMode) {
-      btn.classList.add("bg-[#1f538d]", "text-white");
-      btn.classList.remove("text-slate-700");
+      btn.classList.add("bg-[#ED6D35]", "text-white");
+      btn.classList.remove("text-[#1D3557]");
     } else {
-      btn.classList.remove("bg-[#1f538d]", "text-white");
-      btn.classList.add("text-slate-700");
+      btn.classList.remove("bg-[#ED6D35]", "text-white");
+      btn.classList.add("text-[#1D3557]");
     }
   });
 
@@ -120,9 +121,9 @@ function renderCountyTable() {
     const a = amtMap[c] / 100000;
     totCnt += cntMap[c];
     totAmt += a;
-    const selectedClass = selectedCountyForChart === c ? "bg-sky-100 font-bold" : (idx % 2 === 0 ? "bg-slate-50" : "bg-white");
+    const selectedClass = selectedCountyForChart === c ? "bg-[#FAF3E0] font-bold text-[#ED6D35]" : (idx % 2 === 0 ? "bg-[#F7F5F0]/75" : "bg-white");
     return `
-      <tr onclick="selectCountyForTrend('${c}')" class="${selectedClass} hover:bg-sky-50 cursor-pointer">
+      <tr onclick="selectCountyForTrend('${c}')" class="${selectedClass} hover:bg-[#FAF3E0] cursor-pointer text-[#1D3557]">
         <td class="p-2 text-center">${String(idx + 1).padStart(2, "0")}</td>
         <td class="p-2 text-center">${c}</td>
         <td class="p-2 text-right font-mono">${cntMap[c].toLocaleString()}</td>
@@ -132,7 +133,7 @@ function renderCountyTable() {
   });
 
   rows.push(`
-    <tr onclick="selectCountyForTrend('全國性或未分配')" class="${selectedCountyForChart === "全國性或未分配" ? "bg-sky-100 font-bold" : "bg-white"} hover:bg-sky-50 cursor-pointer">
+    <tr onclick="selectCountyForTrend('全國性或未分配')" class="${selectedCountyForChart === "全國性或未分配" ? "bg-[#FAF3E0] font-bold text-[#ED6D35]" : "bg-white"} hover:bg-[#FAF3E0] cursor-pointer text-[#1D3557]">
       <td class="p-2 text-center">23</td>
       <td class="p-2 text-center">全國性或未分配</td>
       <td class="p-2 text-right font-mono">${unCnt.toLocaleString()}</td>
@@ -141,7 +142,7 @@ function renderCountyTable() {
   `);
 
   rows.push(`
-    <tr onclick="resetCountyChartToTotal()" class="${selectedCountyForChart === "【全臺合計】" ? "bg-amber-100 font-bold" : "bg-amber-50/70 font-bold"} cursor-pointer">
+    <tr onclick="resetCountyChartToTotal()" class="${selectedCountyForChart === "【全臺合計】" ? "bg-[#ED6D35]/15 text-[#1D3557] font-bold" : "bg-[#FAF3E0]/80 text-[#1D3557] font-bold"} cursor-pointer">
       <td class="p-2 text-center">24</td>
       <td class="p-2 text-center">【全臺合計】</td>
       <td class="p-2 text-right font-mono">${totCnt.toLocaleString()}</td>
@@ -164,10 +165,10 @@ function renderBranchTable() {
     totCnt += item.count;
     totAmt += item.amountYi;
     const selectedClass = selectedBranchForChart === item.name
-      ? "bg-sky-100 font-bold"
-      : (idx % 2 === 0 ? "bg-slate-50" : "bg-white");
+      ? "bg-[#FAF3E0] font-bold text-[#ED6D35]"
+      : (idx % 2 === 0 ? "bg-[#F7F5F0]/75" : "bg-white");
     return `
-      <tr onclick="selectBranchForTrend('${item.name}')" class="${selectedClass} hover:bg-sky-50 cursor-pointer">
+      <tr onclick="selectBranchForTrend('${item.name}')" class="${selectedClass} hover:bg-[#FAF3E0] cursor-pointer text-[#1D3557]">
         <td class="p-2 text-center">${String(idx + 1).padStart(2, "0")}</td>
         <td class="p-2 text-center">${item.name}</td>
         <td class="p-2 text-right font-mono">${item.count.toLocaleString()}</td>
@@ -177,7 +178,7 @@ function renderBranchTable() {
   });
 
   rows.push(`
-    <tr onclick="resetBranchChartToTotal()" class="${selectedBranchForChart === "【全部分署】" ? "bg-amber-100 font-bold" : "bg-amber-50/70 font-bold"} cursor-pointer">
+    <tr onclick="resetBranchChartToTotal()" class="${selectedBranchForChart === "【全部分署】" ? "bg-[#ED6D35]/15 text-[#1D3557] font-bold" : "bg-[#FAF3E0]/80 text-[#1D3557] font-bold"} cursor-pointer">
       <td class="p-2 text-center">${String(entries.length + 1).padStart(2, "0")}</td>
       <td class="p-2 text-center">【全臺合計】</td>
       <td class="p-2 text-right font-mono">${totCnt.toLocaleString()}</td>
@@ -286,7 +287,7 @@ function renderCountyTrendChart() {
       orderedKeys,
       budgets,
       counts,
-      "#0d9488",
+      "#ED6D35",
       true
     ), true);
     return;
@@ -309,7 +310,7 @@ function renderCountyTrendChart() {
     years.map(y => `${y}年`),
     budgets,
     counts,
-    "#0d9488",
+    "#ED6D35",
     false
   ), true);
 }
@@ -371,7 +372,6 @@ function renderNatureStructureChart(years, targetLbl) {
   const subtextLine1 = `查詢範圍：${targetLbl}   ｜   區間總核定：${grandTotal.toFixed(2)} 億元   ｜   總案件數：${grandCnt.toLocaleString()} 筆`;
   const subtextLine2 = breakdownParts.length ? breakdownParts.join("  ｜  ") : "目前篩選範圍無資料";
 
-  // 計算每個年度最頂層的非零項目，套用頂部圓角
   const topSeriesKeyPerYear = years.map((_, yIdx) => {
     for (let i = activeConfigs.length - 1; i >= 0; i--) {
       const k = activeConfigs[i].key;
@@ -411,13 +411,13 @@ function renderNatureStructureChart(years, targetLbl) {
       left: "center",
       top: 8,
       itemGap: 6,
-      textStyle: { fontSize: 17, fontWeight: "bold", color: "#0f294a" },
+      textStyle: { fontSize: 17, fontWeight: "bold", color: "#1D3557" },
       subtextStyle: { fontSize: 11.5, fontWeight: "600", color: "#475569", lineHeight: 18 }
     },
     tooltip: {
       trigger: "axis",
       axisPointer: { type: "shadow" },
-      backgroundColor: "rgba(15, 23, 42, 0.92)",
+      backgroundColor: "rgba(29, 53, 87, 0.94)",
       borderWidth: 0,
       textStyle: { color: "#f8fafc", fontSize: 12 },
       formatter: params => {
@@ -440,7 +440,7 @@ function renderNatureStructureChart(years, targetLbl) {
       top: 76,
       itemWidth: 14,
       itemHeight: 10,
-      textStyle: { fontSize: 12, fontWeight: "600", color: "#334155" }
+      textStyle: { fontSize: 12, fontWeight: "600", color: "#1D3557" }
     },
     grid: { left: 74, right: 28, top: 114, bottom: 42 },
     xAxis: {
@@ -448,7 +448,7 @@ function renderNatureStructureChart(years, targetLbl) {
       data: xLabels,
       axisTick: { show: false },
       axisLine: { lineStyle: { color: "#94a3b8" } },
-      axisLabel: { fontWeight: "600", fontSize: 12, color: "#1e293b" }
+      axisLabel: { fontWeight: "600", fontSize: 12, color: "#1D3557" }
     },
     yAxis: {
       type: "value",
@@ -456,7 +456,7 @@ function renderNatureStructureChart(years, targetLbl) {
       nameLocation: "middle",
       nameRotate: 90,
       nameGap: 48,
-      nameTextStyle: { color: "#334155", fontSize: 11.5, fontWeight: "bold" },
+      nameTextStyle: { color: "#1D3557", fontSize: 11.5, fontWeight: "bold" },
       axisLabel: { color: "#64748b", fontSize: 11 },
       splitLine: { lineStyle: { type: "dashed", color: "#e2e8f0" } }
     },
@@ -512,13 +512,13 @@ function renderTrendChart() {
         left: "center",
         top: 10,
         itemGap: 8,
-        textStyle: { fontSize: 17, fontWeight: "bold", color: "#0f294a" },
+        textStyle: { fontSize: 17, fontWeight: "bold", color: "#1D3557" },
         subtextStyle: { fontSize: 12, fontWeight: "600", color: "#475569" }
       },
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
-        backgroundColor: "rgba(15, 23, 42, 0.92)",
+        backgroundColor: "rgba(29, 53, 87, 0.94)",
         borderWidth: 0,
         textStyle: { color: "#f8fafc", fontSize: 12 },
         formatter: params => {
@@ -538,7 +538,7 @@ function renderTrendChart() {
         top: 62,
         itemWidth: 14,
         itemHeight: 10,
-        textStyle: { fontSize: 12, fontWeight: "600", color: "#334155" }
+        textStyle: { fontSize: 12, fontWeight: "600", color: "#1D3557" }
       },
       grid: { left: 74, right: 28, top: 102, bottom: 44 },
       xAxis: {
@@ -546,7 +546,7 @@ function renderTrendChart() {
         data: xLabels,
         axisTick: { show: false },
         axisLine: { lineStyle: { color: "#94a3b8" } },
-        axisLabel: { fontWeight: "600", fontSize: 12, color: "#1e293b" }
+        axisLabel: { fontWeight: "600", fontSize: 12, color: "#1D3557" }
       },
       yAxis: {
         type: "value",
@@ -554,7 +554,7 @@ function renderTrendChart() {
         nameLocation: "middle",
         nameRotate: 90,
         nameGap: 48,
-        nameTextStyle: { color: "#334155", fontSize: 11.5, fontWeight: "bold" },
+        nameTextStyle: { color: "#1D3557", fontSize: 11.5, fontWeight: "bold" },
         axisLabel: { color: "#64748b", fontSize: 11 },
         splitLine: { lineStyle: { type: "dashed", color: "#e2e8f0" } }
       },
@@ -564,7 +564,7 @@ function renderTrendChart() {
           type: "bar",
           stack: "total",
           barMaxWidth: 52,
-          itemStyle: { color: "#2b6cb0" },
+          itemStyle: { color: "#1D3557" },
           label: {
             show: true,
             position: "inside",
@@ -580,7 +580,7 @@ function renderTrendChart() {
           type: "bar",
           stack: "total",
           barMaxWidth: 52,
-          itemStyle: { color: "#d97706" },
+          itemStyle: { color: "#ED6D35" },
           label: {
             show: true,
             position: "inside",
@@ -596,7 +596,7 @@ function renderTrendChart() {
           type: "bar",
           stack: "total",
           barMaxWidth: 52,
-          itemStyle: { color: "#0d9488", borderRadius: [4, 4, 0, 0] },
+          itemStyle: { color: "#004E89", borderRadius: [4, 4, 0, 0] },
           label: {
             show: true,
             position: "inside",
@@ -623,7 +623,7 @@ function renderTrendChart() {
     years.map(y => `${y}年`),
     budgets,
     counts,
-    "#d97706",
+    "#ED6D35",
     false
   ), true);
 }
@@ -643,7 +643,7 @@ function renderBranchComparisonChart() {
       years.map(y => `${y}年`),
       budgets,
       counts,
-      "#0d9488",
+      "#ED6D35",
       false
     ), true);
     return;
@@ -662,7 +662,7 @@ function renderBranchComparisonChart() {
     labels,
     budgets,
     counts,
-    "#0d9488",
+    "#ED6D35",
     false
   ), true);
 }
@@ -680,12 +680,12 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
   const isDense = xLabels.length > 14;
 
   const barBlueGrad = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-    { offset: 0, color: "#3182ce" },
-    { offset: 1, color: "#1e3a8a" }
+    { offset: 0, color: "#004E89" },
+    { offset: 1, color: "#1D3557" }
   ]);
   const barPeakGrad = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-    { offset: 0, color: "#f59e0b" },
-    { offset: 1, color: "#c2410c" }
+    { offset: 0, color: "#ED6D35" },
+    { offset: 1, color: "#C84B1C" }
   ]);
 
   return {
@@ -696,13 +696,13 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
       left: "center",
       top: 10,
       itemGap: 8,
-      textStyle: { fontSize: 17, fontWeight: "bold", color: "#0f294a" },
+      textStyle: { fontSize: 17, fontWeight: "bold", color: "#1D3557" },
       subtextStyle: { fontSize: 12.5, fontWeight: "600", color: "#475569" }
     },
     tooltip: {
       trigger: "axis",
       axisPointer: { type: "shadow" },
-      backgroundColor: "rgba(15, 23, 42, 0.92)",
+      backgroundColor: "rgba(29, 53, 87, 0.94)",
       borderWidth: 0,
       textStyle: { color: "#f8fafc", fontSize: 12 }
     },
@@ -726,7 +726,7 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
           lineHeight: 13,
           fontWeight: "600",
           fontSize: isDense ? 11 : 12,
-          color: "#1e293b",
+          color: "#1D3557",
           formatter: val => (verticalX ? toVerticalChineseLabel(val) : val)
         }
       }
@@ -738,7 +738,7 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
         nameLocation: "middle",
         nameRotate: 90,
         nameGap: 48,
-        nameTextStyle: { color: "#334155", fontSize: 11.5, fontWeight: "bold" },
+        nameTextStyle: { color: "#1D3557", fontSize: 11.5, fontWeight: "bold" },
         gridIndex: 0,
         max: maxB > 0 ? Math.ceil(maxB * 1.25) : 10,
         axisLabel: { color: "#64748b", fontSize: 11 },
@@ -750,7 +750,7 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
         nameLocation: "middle",
         nameRotate: 90,
         nameGap: 48,
-        nameTextStyle: { color: "#334155", fontSize: 11.5, fontWeight: "bold" },
+        nameTextStyle: { color: "#1D3557", fontSize: 11.5, fontWeight: "bold" },
         gridIndex: 1,
         axisLabel: { color: "#64748b", fontSize: 11 },
         splitLine: { lineStyle: { type: "dashed", color: "#f1f5f9" } }
@@ -775,7 +775,7 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
           position: "top",
           fontWeight: "600",
           fontSize: isDense ? 9.5 : 11,
-          color: "#1e3a8a",
+          color: "#1D3557",
           formatter: p => {
             if (!p.value) return "";
             const pct = totalB > 0 ? ((p.value / totalB) * 100).toFixed(1) : "0.0";
@@ -785,7 +785,7 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
         markLine: budgets.length > 1 && maxB > 0 ? {
           symbol: "none",
           lineStyle: { type: "dashed", color: "#64748b", width: 1.3 },
-          label: { formatter: `平均 ${avgB.toFixed(2)} 億`, position: "insideEndTop", color: "#334155", fontSize: 11 },
+          label: { formatter: `平均 ${avgB.toFixed(2)} 億`, position: "insideEndTop", color: "#1D3557", fontSize: 11 },
           data: [{ yAxis: Number(avgB.toFixed(2)) }]
         } : undefined
       },
@@ -805,7 +805,7 @@ function buildDualLayerOption(mainTitle, subTitle, xLabels, budgets, counts, lin
           position: "top",
           fontWeight: "600",
           fontSize: isDense ? 9.5 : 11,
-          color: "#0f766e",
+          color: "#D65A24",
           formatter: p => (p.value > 0 ? `${p.value} 筆` : "")
         }
       }
