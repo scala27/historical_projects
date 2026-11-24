@@ -167,7 +167,7 @@ function initDetailColumnResizer() {
     handle.style.borderRight = "1px solid rgba(255,255,255,0.22)";
 
     handle.addEventListener("mouseenter", () => {
-      handle.style.backgroundColor = "rgba(255,255,255,0.28)";
+      handle.style.backgroundColor = "rgba(237,109,53,0.45)";
     });
     handle.addEventListener("mouseleave", () => {
       if (!isResizingCol) handle.style.backgroundColor = "transparent";
@@ -260,8 +260,8 @@ function initCategoryCheckboxes() {
   const container = $("categoryCheckboxes");
   if (!container) return;
   container.innerHTML = CATEGORIES_LIST.map(cat => `
-    <label class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-slate-100 cursor-pointer text-slate-700">
-      <input type="checkbox" class="cat-chk rounded text-blue-700" value="${cat}" checked onchange="onSingleCategoryChange()" />
+    <label class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-[#FAF3E0] cursor-pointer text-[#1D3557]">
+      <input type="checkbox" class="cat-chk rounded accent-[#ED6D35]" value="${cat}" checked onchange="onSingleCategoryChange()" />
       <span>${cat}</span>
     </label>
   `).join("");
@@ -305,7 +305,7 @@ async function loadAllData(forceNotify) {
   const icon = $("iconSyncCloud");
   if (tip) tip.textContent = "雲端同步中...";
   if (icon) {
-    icon.classList.add("animate-pulse", "text-amber-300");
+    icon.classList.add("animate-pulse", "text-[#ED6D35]");
     icon.classList.remove("text-emerald-300", "text-rose-400");
   }
 
@@ -336,14 +336,14 @@ async function loadAllData(forceNotify) {
     applyFilters();
 
     if (icon) {
-      icon.classList.remove("animate-pulse", "text-amber-300");
+      icon.classList.remove("animate-pulse", "text-[#ED6D35]");
       icon.classList.add("text-emerald-300");
     }
     if (tip) tip.textContent = `已同步 (${allRecords.length} 筆)`;
     if (forceNotify) alert(`雲端資料同步完成，共載入 ${allRecords.length} 筆紀錄！`);
   } catch (err) {
     if (icon) {
-      icon.classList.remove("animate-pulse", "text-amber-300");
+      icon.classList.remove("animate-pulse", "text-[#ED6D35]");
       icon.classList.add("text-rose-400");
     }
     if (tip) tip.textContent = `連線失敗：${err.message}`;
@@ -361,8 +361,11 @@ function populateDropdownOptions() {
 
   selStart.innerHTML = yearList.map(y => `<option value="${y}">${y}</option>`).join("");
   selEnd.innerHTML = yearList.map(y => `<option value="${y}">${y}</option>`).join("");
-  selStart.value = yearList[0];
-  selEnd.value = yearList[yearList.length - 1];
+
+  // 預設進入系統即顯示最新年度案件明細
+  const latestYear = yearList[yearList.length - 1];
+  selStart.value = latestYear;
+  selEnd.value = latestYear;
 
   onDimensionChange();
 }
@@ -469,7 +472,6 @@ function applyFilters() {
 
     const seen = new Set();
     deduplicatedRecords = sorted.filter(r => {
-      // 備註含 [分年累加] 則不合併，各年度獨立計入
       if (String(r["備註資訊"] || "").includes("[分年累加]")) {
         return true;
       }
@@ -570,12 +572,12 @@ function renderCollapsibleCell(rawVal, thresholdLen, alignCenter = false) {
   return `
     <div class="relative group w-full flex items-center gap-0.5">
       <div class="cell-preview truncate flex-1 ${alignCls}" title="${safeText}">${safeText}</div>
-      <button type="button" onclick="toggleCellExpand(this)" title="展開/收合全文" aria-label="展開或收合全文" class="shrink-0 p-0.5 rounded text-slate-400 hover:text-blue-700 hover:bg-slate-200/70 transition">
+      <button type="button" onclick="toggleCellExpand(this)" title="展開/收合全文" aria-label="展開或收合全文" class="shrink-0 p-0.5 rounded text-slate-400 hover:text-[#ED6D35] hover:bg-[#FAF3E0] transition">
         <svg class="w-3 h-3 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <div class="hidden group-hover:block absolute left-0 bottom-full mb-1.5 z-40 w-64 max-w-[85vw] p-2.5 rounded-md bg-slate-800 text-white text-xs leading-relaxed shadow-lg whitespace-normal break-words pointer-events-none text-left">
+      <div class="hidden group-hover:block absolute left-0 bottom-full mb-1.5 z-40 w-64 max-w-[85vw] p-2.5 rounded-md bg-[#1D3557] text-white text-xs leading-relaxed shadow-lg whitespace-normal break-words pointer-events-none text-left">
         ${safeText}
       </div>
     </div>
@@ -590,7 +592,7 @@ function renderConcernCell(rawVal) {
   const safeText = escapeHtmlAttr(text);
   return `
     <div class="w-full truncate text-center" title="${safeText}">
-      <span class="inline-block max-w-full truncate px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium text-[11px]">${safeText}</span>
+      <span class="inline-block max-w-full truncate px-1.5 py-0.5 rounded bg-[#FAF3E0] text-[#004E89] border border-[#004E89]/25 font-medium text-[11px]">${safeText}</span>
     </div>
   `;
 }
@@ -618,6 +620,10 @@ function renderDetailTable() {
   if (thAct) thAct.classList.toggle("hidden", !isAdmin);
   if (colAct) colAct.style.width = isAdmin ? "44px" : "0px";
 
+  if (typeof syncExecAuthUI === "function") {
+    syncExecAuthUI();
+  }
+
   let displayRows = filteredRecords;
   if (detailAuditMode === "merged") {
     displayRows = mergedDuplicateRecords;
@@ -640,13 +646,13 @@ function renderDetailTable() {
   if (auditEl) {
     const links = [];
     if (detailAuditMode !== "all") {
-      links.push(`<button type="button" onclick="setDetailAuditMode('all')" class="text-blue-700 hover:underline font-medium">返回全部 (${filteredRecords.length})</button>`);
+      links.push(`<button type="button" onclick="setDetailAuditMode('all')" class="text-[#ED6D35] hover:underline font-medium">返回全部 (${filteredRecords.length})</button>`);
     } else {
       if (mergedDuplicateRecords.length > 0) {
-        links.push(`<button type="button" onclick="setDetailAuditMode('merged')" class="text-slate-500 hover:text-blue-700 underline decoration-slate-300 underline-offset-2">跨年合併 (${mergedDuplicateRecords.length})</button>`);
+        links.push(`<button type="button" onclick="setDetailAuditMode('merged')" class="text-[#004E89] hover:text-[#ED6D35] underline decoration-[#004E89]/40 underline-offset-2">跨年合併 (${mergedDuplicateRecords.length})</button>`);
       }
       if (zeroBudgetRecords.length > 0) {
-        links.push(`<button type="button" onclick="setDetailAuditMode('zero')" class="text-slate-500 hover:text-blue-700 underline decoration-slate-300 underline-offset-2">0元案件 (${zeroBudgetRecords.length})</button>`);
+        links.push(`<button type="button" onclick="setDetailAuditMode('zero')" class="text-[#004E89] hover:text-[#ED6D35] underline decoration-[#004E89]/40 underline-offset-2">0元案件 (${zeroBudgetRecords.length})</button>`);
       }
     }
     auditEl.innerHTML = links.join("｜");
@@ -660,11 +666,11 @@ function renderDetailTable() {
   if (!tbody) return;
 
   tbody.innerHTML = displayRows.map((r, idx) => {
-    const bg = idx % 2 === 0 ? "bg-slate-50/70" : "bg-white";
+    const bg = idx % 2 === 0 ? "bg-[#F7F5F0]/75" : "bg-white";
     const natureText = typeof formatAppendixToNature === "function" ? formatAppendixToNature(r["附表"]) : r["附表"];
     const editBtn = isAdmin
       ? `<td class="px-1.5 py-1.5 text-center">
-           <button onclick='openEditModal(${JSON.stringify(r).replace(/'/g, "&#39;")})' title="編輯" aria-label="編輯" class="inline-flex items-center justify-center p-1 rounded text-blue-700 hover:bg-blue-100 transition">
+           <button onclick='openEditModal(${JSON.stringify(r).replace(/'/g, "&#39;")})' title="編輯" aria-label="編輯" class="inline-flex items-center justify-center p-1 rounded text-[#004E89] hover:bg-[#FAF3E0] hover:text-[#ED6D35] transition">
              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -673,18 +679,18 @@ function renderDetailTable() {
          </td>`
       : "";
     return `
-      <tr class="${bg} hover:bg-sky-50">
-        <td class="px-1.5 py-1.5 text-center whitespace-nowrap">${r["年度"]}</td>
-        <td class="px-1.5 py-1.5">${renderCollapsibleCell(natureText, 6, true)}</td>
-        <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["類別"], 4, true)}</td>
-        <td class="px-1.5 py-1.5 text-center font-medium whitespace-nowrap">${r["分署"] || "-"}</td>
-        <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["縣市"], 3, true)}</td>
-        <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["水系"], 4, true)}</td>
-        <td class="px-2 py-1.5 font-medium text-slate-800 truncate" title="${escapeHtmlAttr(r["案件名稱"])}">${r["案件名稱"]}</td>
-        <td class="px-1.5 py-1.5 text-right whitespace-nowrap">${formatIntThousand(r["核定經費_千元"])}</td>
-        <td class="px-1.5 py-1.5 text-right whitespace-nowrap">${formatIntThousand(r["可支用經費_千元"])}</td>
-        <td class="px-1.5 py-1.5">${renderCollapsibleCell(r["工程編號"], 18, true)}</td>
-        <td class="px-1.5 py-1.5 text-slate-600">${renderCollapsibleCell(r["備註資訊"], 12, false)}</td>
+      <tr class="${bg} hover:bg-[#FAF3E0]/75">
+        <td class="px-1.5 py-1.5 text-center whitespace-nowrap text-[#1D3557]">${r["年度"]}</td>
+        <td class="px-1.5 py-1.5 text-[#1D3557]">${renderCollapsibleCell(natureText, 6, true)}</td>
+        <td class="px-1.5 py-1.5 text-[#1D3557]">${renderCollapsibleCell(r["類別"], 4, true)}</td>
+        <td class="px-1.5 py-1.5 text-center font-medium whitespace-nowrap text-[#1D3557]">${r["分署"] || "-"}</td>
+        <td class="px-1.5 py-1.5 text-[#1D3557]">${renderCollapsibleCell(r["縣市"], 3, true)}</td>
+        <td class="px-1.5 py-1.5 text-[#1D3557]">${renderCollapsibleCell(r["水系"], 4, true)}</td>
+        <td class="px-2 py-1.5 font-medium text-[#1D3557] truncate" title="${escapeHtmlAttr(r["案件名稱"])}">${r["案件名稱"]}</td>
+        <td class="px-1.5 py-1.5 text-right whitespace-nowrap text-[#1D3557]">${formatIntThousand(r["核定經費_千元"])}</td>
+        <td class="px-1.5 py-1.5 text-right whitespace-nowrap text-[#1D3557]">${formatIntThousand(r["可支用經費_千元"])}</td>
+        <td class="px-1.5 py-1.5 text-[#1D3557]/80">${renderCollapsibleCell(r["工程編號"], 18, true)}</td>
+        <td class="px-1.5 py-1.5 text-[#1D3557]/75">${renderCollapsibleCell(r["備註資訊"], 12, false)}</td>
         <td class="px-1.5 py-1.5">${renderConcernCell(r["地方關切"])}</td>
         ${editBtn}
       </tr>
@@ -713,13 +719,13 @@ function sortDetailTable(field) {
 }
 
 function switchTab(tab) {
-  ["Detail", "County", "Trend", "Branch"].forEach(name => {
+  ["Detail", "County", "Trend", "Branch", "Exec"].forEach(name => {
     const view = $(`view${name}`);
     const btn = $(`tabBtn${name}`);
     if (view) view.classList.add("hidden");
     if (btn) {
-      btn.classList.remove("bg-[#1f538d]", "text-white");
-      btn.classList.add("bg-slate-200", "text-slate-700");
+      btn.classList.remove("bg-[#ED6D35]", "text-white", "border-transparent", "shadow-xs");
+      btn.classList.add("bg-white", "text-[#1D3557]", "border-[#1D3557]/15");
     }
   });
 
@@ -728,8 +734,21 @@ function switchTab(tab) {
   const activeBtn = $(`tabBtn${cap}`);
   if (activeView) activeView.classList.remove("hidden");
   if (activeBtn) {
-    activeBtn.classList.remove("bg-slate-200", "text-slate-700");
-    activeBtn.classList.add("bg-[#1f538d]", "text-white");
+    activeBtn.classList.remove("bg-white", "text-[#1D3557]", "border-[#1D3557]/15");
+    activeBtn.classList.add("bg-[#ED6D35]", "text-white", "border-transparent", "shadow-xs");
+  }
+
+  // 方案 A：切至「執行管考」自動隱藏右上方歷年查詢面板，切回其餘頁籤自動恢復
+  const filterBar = $("globalFilterBar");
+  if (filterBar) {
+    const isExec = tab === "exec";
+    filterBar.classList.toggle("hidden", isExec);
+    filterBar.classList.toggle("grid", !isExec);
+  }
+
+  if (tab === "exec" && typeof onEnterExecTab === "function") {
+    onEnterExecTab();
+    return;
   }
 
   setTimeout(() => {
