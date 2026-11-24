@@ -31,6 +31,7 @@ function normalizeText(val) {
 function normalizeCategoryName(rawCat) {
   const c = normalizeText(rawCat);
   if (c === "用地先期" || c === "用地先期作業") return "用地先期作業";
+  if (c === "委託測設監造" || c.includes("委託測設") || c.includes("委託設計")) return "委託設計/監造";
   if (c === "橋梁改建" || c === "橋梁改建/補助") return "橋梁改建/補助";
   if (c === "逕流分擔" || c === "逕流分擔/補助" || c === "逕流分擔設施建置") return "逕流分擔/補助";
   return c || "工程";
@@ -60,22 +61,24 @@ function getCoreProjectName(rawName) {
 }
 
 /**
- * 將原始附表名稱（相容「附表1-河川」、「部-附表4-...」、「部附表7-維修 (2)」等歷年命名）轉換為對應的「性質」名稱
+ * 將原始附表名稱轉換為對應的「性質」名稱
+ * 優先比對關鍵字（相容 116 年起「附表5-構造物維修」），再比對附表編號（相容 110-115 年舊命名）
  */
 function formatAppendixToNature(rawAppendix) {
   const s = normalizeText(rawAppendix);
   if (!s || s === "-") return "-";
+  if (s.includes("構造物維修") || s.includes("維修改善") || s.includes("維修")) return "維修改善";
+  if (s.includes("整體環境") || s.includes("環境營造")) return "環境營造";
+  if (s.includes("土地") || s.includes("海岸")) return "土地調適";
+  if (s.includes("整建")) return "整建";
+  if (s.includes("區排")) return "區排";
+  if (s.includes("河川")) return "河川";
+
   if (/附表\s*[1一]/.test(s)) return "河川";
   if (/附表\s*[2二]/.test(s)) return "區排";
   if (/附表\s*[3三]/.test(s)) return "土地調適";
   if (/附表\s*[4四]/.test(s)) return "環境營造";
   if (/附表\s*[5五]/.test(s)) return "整建";
   if (/附表\s*[6六7七]/.test(s)) return "維修改善";
-  if (s.includes("河川")) return "河川";
-  if (s.includes("區排")) return "區排";
-  if (s.includes("土地")) return "土地調適";
-  if (s.includes("整體環境") || s.includes("環境營造")) return "環境營造";
-  if (s.includes("整建")) return "整建";
-  if (s.includes("構造物維修") || s.includes("維修改善") || s.includes("維修")) return "維修改善";
   return s;
 }
